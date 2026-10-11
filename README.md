@@ -19,6 +19,7 @@
 - 仪表板可按状态、名称、下次到期、最后 ping 排序（点表头，选择记在浏览器里），可勾选多项批量暂停 / 恢复 / 删除
 - 检查项可一键清空历史：回到「新建」重新计时，宕机统计与状态翻转记录保留
 - 整个项目的 ping 地址可在「设置」切成 `<项目前缀>/<slug>` 形态（没有 slug 的检查项仍用 UUID），深浅色也能手动切换，默认跟随系统
+- 可安装为 PWA：桌面与手机主屏都有独立窗口与图标（`/manifest.webmanifest` + 全套图标），但**有意不含离线能力**，见「边界」
 
 ## 状态语义
 
@@ -150,6 +151,8 @@ curl $SITE_ROOT/api/v3/badges/
 
 pnpm 命令要在 `internal/web` 目录里跑，那里才有 `packageManager` 声明供其切换版本。
 
+安装入口只在安全上下文里出现：HTTPS 或 `localhost`。LAN 裸 HTTP（如 `http://192.168.1.10:8080`）打不出「安装」按钮属正常，徽章、ping、API 都不受影响；临时装一次可以 `ssh -L 8080:localhost:8080 <host>` 走本地回环，长期用就给反向代理上 TLS。
+
 SQLite 是 WAL 模式，**需要对数据目录本身可写**；宿主目录属主与容器内 uid 不一致时症状是 `error 14: unable to open database file`，`chmod 777` 只是把问题推到下次恢复备份之后。
 
 ## 开发
@@ -164,12 +167,15 @@ make vet     # gofmt + go vet + tsc --noEmit
 
 目录：`internal/engine` 是纯函数状态机（不碰数据库，所有时间边界都在这层测），`internal/store` 是唯一的数据访问层（SQLite 写连接池 `MaxOpenConns=1` + `BEGIN IMMEDIATE`），`internal/notify` 是 apprise 封装 + 投递队列，`internal/web` 是 React SPA。
 
+PWA 图标的母版是 `internal/web/brand/favicon.svg`（+ 栅格化出的 `icon-512-source.png`）；`internal/web/public/` 下的七件套与 `favicon.svg` 是 `python3 /path/to/.github/pwa-preset/gen-icons.py --src internal/web/brand/icon-512-source.png --svg internal/web/brand/favicon.svg --bg '#1f2933' --out internal/web/public` 的产物，别手改。Vite 会把 `public/` 原样拷进 `dist/` 根，再由 `go:embed all:dist` 打进二进制。
+
 CI 接的是组织统一的 reusable workflow（`Felix2yu/.github`，pin 在 `@v1`）：`test` → `image` → `release` 三个 job。版本号由 git tag 通过 `-X main.version` 注入，本地 `go build` 出来是 `dev`。工具链版本只有一个来源：仓库根 `.nvmrc` 与 `internal/web/package.json` 的 `packageManager`。
 
 ## 边界
 
 以下这些**有意不做**，需要时再评估，别顺手加上：
 
+- 离线可用与 Service Worker：断网时面板里没有可展示的数据，兜底页只会误导，故 PWA 只做到「能装、有图标、独立窗口」，不注册 SW
 - 多用户、团队、权限与登录：单实例内网自用，访问控制交给反向代理
 - 邮件形态的日报 / 周报：要额外维护 SMTP 与一套发送状态（宕机催促已按渠道内置，见 `FEIXI_NAG_PERIOD`）
 - 用邮件地址发 ping、把大请求体外置到对象存储
