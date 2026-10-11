@@ -83,9 +83,10 @@ func (db *DB) RecordPing(ctx context.Context, checkID int64, action engine.Actio
 
 		if _, err := tx.ExecContext(ctx,
 			`UPDATE checks SET n_pings=?, last_ping=?, last_start=?, last_start_rid=?,
-				last_duration_us=?, alert_after=?, status=? WHERE id=?`,
+				last_duration_us=?, alert_after=?, status=?, fail_count=? WHERE id=?`,
 			n, nullTime(c.LastPing), nullTime(c.LastStart), nullStr(c.LastStartRid),
-			nullDur(c.LastDuration), nullTime(c.AlertAfter), string(c.Status), checkID); err != nil {
+			nullDur(c.LastDuration), nullTime(c.AlertAfter), string(c.Status), c.FailCount,
+			checkID); err != nil {
 			return err
 		}
 

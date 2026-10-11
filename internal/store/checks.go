@@ -29,22 +29,25 @@ type Scanner interface {
 const checkColumns = `id, code, badge_key, project_id, name, slug, tags, description, created,
 	kind, timeout_us, grace_us, schedule, tz, n_pings, last_ping, last_start, last_start_rid,
 	last_duration_us, alert_after, status, methods, manual_resume, filter_http_body,
-	filter_default_fail, start_kw, success_kw, failure_kw`
+	filter_default_fail, start_kw, success_kw, failure_kw,
+	fail_tolerance, fail_count, flapping, flap_since`
 
 func scanCheck(s Scanner) (*engine.Check, error) {
 	var (
 		created, timeoutUS, graceUS, npings             int64
 		lastDurationUS                                  sql.NullInt64
-		lastPing, lastStart, alertAfter                 sql.NullInt64
+		lastPing, lastStart, alertAfter, flapSince      sql.NullInt64
 		lastStartRid                                    sql.NullString
 		kind, status, methods                           string
 		manualResume, filterHTTPBody, filterDefaultFail int64
+		failTolerance, failCount, flapping              int64
 	)
 	c := &engine.Check{}
 	err := s.Scan(&c.ID, &c.Code, &c.BadgeKey, &c.ProjectID, &c.Name, &c.Slug, &c.Tags,
 		&c.Description, &created, &kind, &timeoutUS, &graceUS, &c.Schedule, &c.TZ, &npings,
 		&lastPing, &lastStart, &lastStartRid, &lastDurationUS, &alertAfter, &status, &methods,
-		&manualResume, &filterHTTPBody, &filterDefaultFail, &c.StartKW, &c.SuccessKW, &c.FailureKW)
+		&manualResume, &filterHTTPBody, &filterDefaultFail, &c.StartKW, &c.SuccessKW, &c.FailureKW,
+		&failTolerance, &failCount, &flapping, &flapSince)
 	if err != nil {
 		return nil, err
 	}
@@ -64,6 +67,10 @@ func scanCheck(s Scanner) (*engine.Check, error) {
 	c.LastStartRid = strPtr(lastStartRid)
 	c.LastDuration = durPtr(lastDurationUS)
 	c.AlertAfter = timePtr(alertAfter)
+	c.FailTolerance = int(failTolerance)
+	c.FailCount = int(failCount)
+	c.Flapping = flapping != 0
+	c.FlapSince = timePtr(flapSince)
 	return c, nil
 }
 
@@ -215,24 +222,25 @@ func (db *DB) DistinctTags(ctx context.Context, projectID int64) ([]string, erro
 }
 
 type NewCheck struct {
-	ProjectID   int64
-	Name        string
-	Slug        string
-	Tags        string
-	Desc        string
-	Kind        engine.Kind
-	Timeout     time.Duration
-	Grace       time.Duration
-	Schedule    string
-	TZ          string
-	Methods     string
-	ManualResum bool
-	FilterHTTP  bool
-	FilterFail  bool
-	StartKW     string
-	SuccessKW   string
-	FailureKW   string
-	ChannelIDs  []int64
+	ProjectID     int64
+	Name          string
+	Slug          string
+	Tags          string
+	Desc          string
+	Kind          engine.Kind
+	Timeout       time.Duration
+	Grace         time.Duration
+	Schedule      string
+	TZ            string
+	Methods       string
+	ManualResum   bool
+	FilterHTTP    bool
+	FilterFail    bool
+	StartKW       string
+	SuccessKW     string
+	FailureKW     string
+	FailTolerance int
+	ChannelIDs    []int64
 }
 
 func (db *DB) CreateCheck(ctx context.Context, in *NewCheck) (*engine.Check, error) {
@@ -255,13 +263,13 @@ func (db *DB) CreateCheck(ctx context.Context, in *NewCheck) (*engine.Check, err
 			`INSERT INTO checks(code, badge_key, project_id, name, slug, tags, description, created,
 				kind, timeout_us, grace_us, schedule, tz, status,
 				methods, manual_resume, filter_http_body, filter_default_fail,
-				start_kw, success_kw, failure_kw)
-			VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+				start_kw, success_kw, failure_kw, fail_tolerance)
+			VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 			code, uuid.NewString(), in.ProjectID, in.Name, in.Slug, in.Tags, in.Desc, toDB(now),
 			string(in.Kind), in.Timeout.Microseconds(), in.Grace.Microseconds(),
 			in.Schedule, in.TZ, string(engine.StatusNew),
 			in.Methods, nullBool(in.ManualResum), nullBool(in.FilterHTTP), nullBool(in.FilterFail),
-			in.StartKW, in.SuccessKW, in.FailureKW)
+			in.StartKW, in.SuccessKW, in.FailureKW, in.FailTolerance)
 		if err != nil {
 			return fmt.Errorf("建检查项：%w", err)
 		}
@@ -346,13 +354,13 @@ func (db *DB) UpdateCheck(ctx context.Context, c *engine.Check) error {
 		_, err := tx.ExecContext(ctx,
 			`UPDATE checks SET name=?, slug=?, tags=?, description=?, kind=?, timeout_us=?,
 				grace_us=?, schedule=?, tz=?, methods=?, manual_resume=?, filter_http_body=?,
-				filter_default_fail=?, start_kw=?, success_kw=?, failure_kw=?,
+				filter_default_fail=?, start_kw=?, success_kw=?, failure_kw=?, fail_tolerance=?,
 				status=?, alert_after=?, last_ping=?, last_start=?, last_start_rid=?,
 				last_duration_us=? WHERE id=?`,
 			c.Name, c.Slug, c.Tags, c.Description, string(c.Kind), c.Timeout.Microseconds(),
 			c.Grace.Microseconds(), c.Schedule, c.TZ, c.Methods, nullBool(c.ManualResume),
 			nullBool(c.FilterHTTPBody), nullBool(c.FilterDefaultFail),
-			c.StartKW, c.SuccessKW, c.FailureKW,
+			c.StartKW, c.SuccessKW, c.FailureKW, c.FailTolerance,
 			string(c.Status), nullTime(c.AlertAfter), nullTime(c.LastPing), nullTime(c.LastStart),
 			nullStr(c.LastStartRid), nullDur(c.LastDuration), c.ID)
 		return err

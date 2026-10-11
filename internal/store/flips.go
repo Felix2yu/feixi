@@ -257,20 +257,31 @@ func insertFlip(ctx context.Context, tx *sql.Tx, checkID int64, f *engine.Flip) 
 func updateCheckState(ctx context.Context, tx *sql.Tx, c *engine.Check) error {
 	_, err := tx.ExecContext(ctx,
 		`UPDATE checks SET last_ping=?, last_start=?, last_start_rid=?, last_duration_us=?,
-			status=?, alert_after=? WHERE id=?`,
+			status=?, alert_after=?, fail_count=?, flapping=?, flap_since=? WHERE id=?`,
 		nullTime(c.LastPing), nullTime(c.LastStart), nullStr(c.LastStartRid),
-		nullDur(c.LastDuration), string(c.Status), nullTime(c.AlertAfter), c.ID)
+		nullDur(c.LastDuration), string(c.Status), nullTime(c.AlertAfter),
+		c.FailCount, boolInt(c.Flapping), nullTime(c.FlapSince), c.ID)
 	return err
+}
+
+func boolInt(b bool) int64 {
+	if b {
+		return 1
+	}
+	return 0
 }
 
 type FlipEvent struct {
 	Timestamp time.Time
 	Up        bool
+	OldStatus engine.Status
+	NewStatus engine.Status
+	Reason    engine.Reason
 }
 
 // Flips returns the transition history for the API and the timeline chart.
 func (db *DB) Flips(ctx context.Context, checkID int64, start, end *time.Time) ([]FlipEvent, error) {
-	q := newQuery(`SELECT created, new_status FROM flips WHERE owner_id = ?`, checkID)
+	q := newQuery(`SELECT created, old_status, new_status, reason FROM flips WHERE owner_id = ?`, checkID)
 	if start != nil {
 		q.raw(" AND created >= ?")
 		q.args = append(q.args, toDB(*start))
@@ -290,13 +301,37 @@ func (db *DB) Flips(ctx context.Context, checkID int64, start, end *time.Time) (
 	var out []FlipEvent
 	for rows.Next() {
 		var created int64
-		var status string
-		if err := rows.Scan(&created, &status); err != nil {
+		var oldStatus, newStatus, reason string
+		if err := rows.Scan(&created, &oldStatus, &newStatus, &reason); err != nil {
 			return nil, err
 		}
-		out = append(out, FlipEvent{Timestamp: fromDB(created), Up: status == string(engine.StatusUp)})
+		out = append(out, FlipEvent{
+			Timestamp: fromDB(created),
+			Up:        newStatus == string(engine.StatusUp),
+			OldStatus: engine.Status(oldStatus),
+			NewStatus: engine.Status(newStatus),
+			Reason:    engine.Reason(reason),
+		})
 	}
 	return out, rows.Err()
+}
+
+// LastDownFlip reports when the check most recently entered the down state and
+// why, so reminders can say how long the outage has lasted.
+func (db *DB) LastDownFlip(ctx context.Context, checkID int64) (time.Time, engine.Reason, bool, error) {
+	var created int64
+	var reason string
+	err := db.Read.QueryRowContext(ctx,
+		`SELECT created, reason FROM flips
+		  WHERE owner_id = ? AND new_status = 'down' ORDER BY id DESC LIMIT 1`,
+		checkID).Scan(&created, &reason)
+	if errors.Is(err, sql.ErrNoRows) {
+		return time.Time{}, engine.ReasonNone, false, nil
+	}
+	if err != nil {
+		return time.Time{}, engine.ReasonNone, false, err
+	}
+	return fromDB(created), engine.Reason(reason), true, nil
 }
 
 // Downtimes computes per-month outage statistics by replaying the flip history

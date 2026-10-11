@@ -17,6 +17,9 @@ import (
 type ChannelConf struct {
 	Up   bool `json:"up"`
 	Down bool `json:"down"`
+	// Nag opts into repeated reminders while a check stays down, at the
+	// instance-wide cadence configured by FEIXI_NAG_PERIOD.
+	Nag bool `json:"nag"`
 }
 
 type Channel struct {
@@ -321,6 +324,93 @@ func (db *DB) Notifications(ctx context.Context, limit int) ([]*Notification, er
 		out = append(out, n)
 	}
 	return out, rows.Err()
+}
+
+// NotificationByCode loads one delivery record by its public code.
+func (db *DB) NotificationByCode(ctx context.Context, code string) (*Notification, error) {
+	var (
+		n                  = &Notification{}
+		created            int64
+		ownerID, channelID sql.NullInt64
+		status             string
+	)
+	err := db.Read.QueryRowContext(ctx,
+		`SELECT n.id, n.code, n.owner_id, n.channel_id, n.check_status, n.created, n.error,
+				COALESCE(c.name, ''), COALESCE(ch.name, '')
+		   FROM notifications n
+		   LEFT JOIN checks c ON c.id = n.owner_id
+		   LEFT JOIN channels ch ON ch.id = n.channel_id
+		  WHERE n.code = ?`, code).
+		Scan(&n.ID, &n.Code, &ownerID, &channelID, &status, &created,
+			&n.Error, &n.CheckName, &n.ChannelName)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	n.CheckID = int64Ptr(ownerID)
+	n.ChannelID = int64Ptr(channelID)
+	n.CheckStatus = engine.Status(status)
+	n.Created = fromDB(created)
+	return n, nil
+}
+
+// NotificationsForCheck lists delivery records for one check since `since`,
+// newest first. It feeds the per-check event stream.
+func (db *DB) NotificationsForCheck(ctx context.Context, checkID int64, since time.Time, limit int) ([]*Notification, error) {
+	rows, err := db.Read.QueryContext(ctx,
+		`SELECT n.id, n.code, n.owner_id, n.channel_id, n.check_status, n.created, n.error,
+				COALESCE(c.name, ''), COALESCE(ch.name, '')
+		   FROM notifications n
+		   LEFT JOIN checks c ON c.id = n.owner_id
+		   LEFT JOIN channels ch ON ch.id = n.channel_id
+		  WHERE n.owner_id = ? AND n.created >= ?
+		  ORDER BY n.id DESC LIMIT ?`, checkID, toDB(since), limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []*Notification
+	for rows.Next() {
+		var (
+			n                  = &Notification{}
+			created            int64
+			ownerID, channelID sql.NullInt64
+			status             string
+		)
+		if err := rows.Scan(&n.ID, &n.Code, &ownerID, &channelID, &status, &created,
+			&n.Error, &n.CheckName, &n.ChannelName); err != nil {
+			return nil, err
+		}
+		n.CheckID = int64Ptr(ownerID)
+		n.ChannelID = int64Ptr(channelID)
+		n.CheckStatus = engine.Status(status)
+		n.Created = fromDB(created)
+		out = append(out, n)
+	}
+	return out, rows.Err()
+}
+
+// LastDeliveredNotice reports when the most recent *successful* notification of
+// the given status reached a channel. Rows still marked Sending or carrying an
+// error do not count, so reminders wait for a real delivery.
+func (db *DB) LastDeliveredNotice(ctx context.Context, checkID, channelID int64, status engine.Status) (*time.Time, error) {
+	var created int64
+	err := db.Read.QueryRowContext(ctx,
+		`SELECT created FROM notifications
+		  WHERE owner_id = ? AND channel_id = ? AND check_status = ? AND error = ''
+		  ORDER BY id DESC LIMIT 1`,
+		checkID, channelID, string(status)).Scan(&created)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	t := fromDB(created)
+	return &t, nil
 }
 
 func nullInt64(v *int64) sql.NullInt64 {
