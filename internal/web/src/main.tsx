@@ -44,3 +44,8 @@ createRoot(document.getElementById("root")!).render(
     </QueryClientProvider>
   </ToastProvider>,
 );
+
+// 只在生产构建注册：dev 下 vite 的产物名每轮都变，留着旧 SW 会让热更新看起来没生效。
+if (!import.meta.env.DEV && "serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js").catch(() => {});
+}
