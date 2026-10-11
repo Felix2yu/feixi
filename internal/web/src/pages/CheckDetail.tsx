@@ -14,8 +14,7 @@ const localZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 
 // 地址后缀就是信号本身，所以直接列出可复制的完整地址，比写 &lt;exitstatus&gt; 这种占位符清楚。
 const SIGNALS: Array<{ suffix: string; meaning: string }> = [
-  { suffix: "", meaning: "成功：任务按时跑完" },
-  { suffix: "/success", meaning: "成功：与不接后缀等价" },
+  { suffix: "/success", meaning: "成功：任务按时跑完" },
   { suffix: "/start", meaning: "开始运行，配合 ?rid= 可算出运行时长" },
   { suffix: "/log", meaning: "记一条日志，不改变状态" },
   { suffix: "/fail", meaning: "失败" },
@@ -149,7 +148,9 @@ export default function CheckDetail() {
           <input readOnly value={c.uuid} className="min-w-0 flex-1 truncate rounded-md border border-line bg-canvas px-2 py-1 font-mono text-xs" />
           <CopyButton value={c.uuid} label="复制 UUID" />
         </div>
-        <p className="text-xs text-ink-soft">在上面的地址后面接以下后缀，发送不同信号：</p>
+        <p className="text-xs text-ink-soft">
+          在上面的地址后面接以下后缀，发送不同信号；不接后缀等同于 <code>/success</code>：
+        </p>
         <ul className="space-y-1">
           {SIGNALS.map((sig) => (
             <li key={sig.suffix} className="flex items-center gap-2 text-xs">
