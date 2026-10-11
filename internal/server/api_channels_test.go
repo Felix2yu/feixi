@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/google/uuid"
@@ -392,6 +393,10 @@ func TestSPAStatic(t *testing.T) {
 	if err != nil {
 		t.Skipf("前端未构建：%v", err)
 	}
+	// 只有占位 .gitkeep 的 dist 也能 embed 成功，但没有任何可服务的产物。
+	if _, err := fs.ReadFile(files, "index.html"); err != nil {
+		t.Skip("前端未构建：dist 里只有占位文件")
+	}
 	asset := firstAsset(t, files)
 
 	res := ts.do(t, "GET", "/", nil)
@@ -422,16 +427,34 @@ func TestSPAStatic(t *testing.T) {
 		t.Errorf("spa route content-type = %q", ct)
 	}
 
-	// assets 下不存在的路径同样回落 index.html，并且不能再挂 immutable。
+	// 带扩展名的缺失文件不再吐壳页：manifest 被 HTML 顶替时 PWA 会静默失效。
 	res = ts.do(t, "GET", "/assets/definitely-missing.js", nil)
+	if res.StatusCode != http.StatusNotFound {
+		t.Fatalf("missing asset = %d, want 404", res.StatusCode)
+	}
+
+	for _, tt := range []struct{ path, wantType string }{
+		{"/manifest.webmanifest", "application/manifest+json"},
+		{"/icon-192.png", "image/png"},
+		{"/favicon.ico", "image/vnd.microsoft.icon"},
+		{"/favicon.svg", "image/svg+xml"},
+	} {
+		res = ts.do(t, "GET", tt.path, nil)
+		if res.StatusCode != http.StatusOK {
+			t.Errorf("%s = %d, want 200（public/ 下的资产没进 dist？）", tt.path, res.StatusCode)
+			continue
+		}
+		if ct := res.Header.Get("Content-Type"); ct != tt.wantType {
+			t.Errorf("%s content-type = %q, want %q", tt.path, ct, tt.wantType)
+		}
+	}
+
+	// 真实 check 的 ID 要能落回壳页：一旦 ID 格式里冒出点号，上面那条
+	// 「带扩展名不回落」的规则会先把这里打红，而不是线上一片 404。
+	_, checkID := createCheck(t, ts, map[string]any{"name": "路由"})
+	res = ts.do(t, "GET", "/checks/"+checkID, nil)
 	if res.StatusCode != http.StatusOK {
-		t.Fatalf("missing asset = %d", res.StatusCode)
-	}
-	if ct := res.Header.Get("Content-Type"); !strings.HasPrefix(ct, "text/html") {
-		t.Errorf("fallback content-type = %q", ct)
-	}
-	if cc := res.Header.Get("Cache-Control"); cc != "no-cache" {
-		t.Errorf("fallback should be no-cache, got %q", cc)
+		t.Fatalf("check route = %d, want 200", res.StatusCode)
 	}
 }
 
@@ -442,6 +465,10 @@ func TestContentType(t *testing.T) {
 		{"site.css", "text/css; charset=utf-8"},
 		{"logo.svg", "image/svg+xml"},
 		{"manifest.json", "application/json"},
+		{"manifest.webmanifest", "application/manifest+json"},
+		{"icon-512.png", "image/png"},
+		{"apple-touch-icon.png", "image/png"},
+		{"favicon.ico", "image/vnd.microsoft.icon"},
 		{"data.bin", "application/octet-stream"},
 		{"no-extension", "application/octet-stream"},
 	}
@@ -463,6 +490,50 @@ func TestServeStaticRejectsTraversal(t *testing.T) {
 	}
 	if strings.Contains(rec.Body.String(), "root:") {
 		t.Error("leaked a passwd-shaped body")
+	}
+}
+
+// TestServeStaticAssetRules 用内存 FS 验静态规则，不依赖有没有跑过 make web。
+func TestServeStaticAssetRules(t *testing.T) {
+	files := fstest.MapFS{
+		"index.html":           {Data: []byte("<!doctype html>壳")},
+		"manifest.webmanifest": {Data: []byte(`{"name":"飞檄"}`)},
+		"assets/index-ABCD.js": {Data: []byte("console.log(1)")},
+	}
+
+	tests := []struct {
+		path   string
+		status int
+		ctype  string
+		cache  string
+		body   string
+	}{
+		{"/", http.StatusOK, "text/html; charset=utf-8", "no-cache", "壳"},
+		{"/checks/9f2c1a", http.StatusOK, "text/html; charset=utf-8", "no-cache", "壳"},
+		{"/gone/page.html", http.StatusOK, "text/html; charset=utf-8", "no-cache", "壳"},
+		{"/manifest.webmanifest", http.StatusOK, "application/manifest+json", "no-cache", "飞檄"},
+		{"/assets/index-ABCD.js", http.StatusOK, "text/javascript; charset=utf-8", "immutable", "console"},
+		{"/manifest-typo.webmanifest", http.StatusNotFound, "text/plain; charset=utf-8", "", ""},
+		{"/icon-192.png", http.StatusNotFound, "text/plain; charset=utf-8", "", ""},
+		{"/wp-login.php", http.StatusNotFound, "text/plain; charset=utf-8", "", ""},
+		{"/assets/missing-ABCD.js", http.StatusNotFound, "text/plain; charset=utf-8", "", ""},
+	}
+	for _, tt := range tests {
+		rec := httptest.NewRecorder()
+		serveStatic(rec, httptest.NewRequest("GET", tt.path, nil), files)
+
+		if rec.Code != tt.status {
+			t.Errorf("%s status = %d, want %d", tt.path, rec.Code, tt.status)
+		}
+		if ct := rec.Header().Get("Content-Type"); ct != tt.ctype {
+			t.Errorf("%s content-type = %q, want %q", tt.path, ct, tt.ctype)
+		}
+		if tt.cache != "" && !strings.Contains(rec.Header().Get("Cache-Control"), tt.cache) {
+			t.Errorf("%s cache-control = %q, want %q", tt.path, rec.Header().Get("Cache-Control"), tt.cache)
+		}
+		if tt.body != "" && !strings.Contains(rec.Body.String(), tt.body) {
+			t.Errorf("%s body = %q, want it to contain %q", tt.path, rec.Body.String(), tt.body)
+		}
 	}
 }
 

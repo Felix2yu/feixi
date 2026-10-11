@@ -33,6 +33,12 @@ func serveStatic(w http.ResponseWriter, req *http.Request, files fs.FS) {
 
 	body, err := fs.ReadFile(files, name)
 	if err != nil || len(body) == 0 {
+		// 带扩展名的路径不是前端路由：回落成 index.html 会让浏览器把 HTML 当
+		// manifest 或图标用，MIME 不合法、PWA 静默失效，且难排查。
+		if ext := path.Ext(name); ext != "" && ext != ".html" {
+			writeText(w, http.StatusNotFound, "资源不存在")
+			return
+		}
 		// Unknown paths fall back to the SPA entry so client-side routing works.
 		body, err = fs.ReadFile(files, "index.html")
 		if err != nil {
@@ -64,6 +70,14 @@ func contentType(name string) string {
 		return "text/css; charset=utf-8"
 	case strings.HasSuffix(name, ".svg"):
 		return "image/svg+xml"
+	case strings.HasSuffix(name, ".webmanifest"):
+		// Go 的 mime.TypeByExtension 不认 .webmanifest，浏览器却对 manifest 的
+		// MIME 严格，只能显式给。
+		return "application/manifest+json"
+	case strings.HasSuffix(name, ".png"):
+		return "image/png"
+	case strings.HasSuffix(name, ".ico"):
+		return "image/vnd.microsoft.icon"
 	case strings.HasSuffix(name, ".json"):
 		return "application/json"
 	default:
