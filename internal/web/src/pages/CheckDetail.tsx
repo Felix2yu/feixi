@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { StatusGlyph } from "../components/StatusGlyph";
 import { Button, CopyButton, EmptyState, cx, useToast } from "../components/ui";
 import { api } from "../lib/api";
+import { buildRuns, timelineColor, type FlipEvent } from "../lib/timeline";
 import { statusMeta } from "../lib/status";
 import { formatDateTime, fromNow, humanDuration } from "../lib/time";
 import type { Ping } from "../lib/types";
@@ -246,53 +247,29 @@ function kindLabel(kind: Ping["type"]): string {
   return { success: "成功", start: "开始", log: "日志", fail: "失败", ign: "忽略" }[kind] ?? kind;
 }
 
-// Timeline draws the last day as a 120-segment strip, the same idea as the
-// hosted product's minute bars: green up, orange late, red down, grey otherwise.
-function Timeline({ flips, status }: { flips: Array<{ timestamp: string; up: 0 | 1 }>; status: string }) {
-  const windowSeconds = 24 * 3600;
-  const segments = 120;
+// Timeline renders the window as continuous spans: one block per state, width
+// proportional to how long it lasted. Rasterising it into fixed cells made three
+// real transitions look like a hundred events.
+function Timeline({ flips, status }: { flips: FlipEvent[]; status: string }) {
+  const windowMs = 24 * 3600 * 1000;
   const now = Date.now();
-  const start = now - windowSeconds * 1000;
-  const per = windowSeconds * 1000 / segments;
-
-  // Rebuild the state of each segment by replaying flips backwards.
-  const colors: string[] = new Array(segments).fill("#e4e7eb");
-  // A check that has never run, or that is paused, has no "up" history to draw.
-  let current: string | null =
-    status === "down" ? "down" : status === "grace" ? "late" : status === "up" ? "up" : null;
-  const ordered = [...flips].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  let cursor = now;
-  for (const f of ordered) {
-    const at = new Date(f.timestamp).getTime();
-    paint(colors, at, cursor, current, start, per, segments);
-    current = f.up ? "up" : "down";
-    cursor = at;
-  }
-  paint(colors, start, cursor, current, start, per, segments);
+  const runs = buildRuns(flips, status, now, windowMs);
 
   return (
-    <div className="flex h-8 items-end gap-px">
-      {colors.map((color, i) => (
-        <span key={i} className="flex-1 rounded-sm" style={{ background: color, height: "100%" }} />
+    <div className="flex h-8 items-stretch overflow-hidden rounded">
+      {runs.map((r, i) => (
+        <span
+          key={i}
+          title={`${labelFor(r.state)} · ${humanDuration(r.to - r.from)}`}
+          style={{ background: timelineColor(r.state), flexGrow: (r.to - r.from) / windowMs }}
+        />
       ))}
     </div>
   );
 }
 
-function paint(
-  colors: string[],
-  from: number,
-  to: number,
-  state: string | null,
-  start: number,
-  per: number,
-  segments: number,
-) {
-  if (!state) return;
-  const palette: Record<string, string> = { up: "#4caf50", late: "#fe7d37", down: "#e05d44" };
-  const first = Math.max(0, Math.floor((from - start) / per));
-  const last = Math.min(segments - 1, Math.ceil((to - start) / per) - 1);
-  for (let i = first; i <= last; i++) colors[i] = palette[state] ?? "#e4e7eb";
+function labelFor(state: string | null): string {
+  return state === "up" ? "正常" : state === "down" ? "宕机" : state === "late" ? "延迟" : "无记录";
 }
 
 function uptimeTone(uptime: number): string {
