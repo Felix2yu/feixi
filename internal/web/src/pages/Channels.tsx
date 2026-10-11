@@ -40,6 +40,7 @@ export default function Channels() {
   });
 
   const disabled = (list.data?.channels ?? []).filter((c) => c.disabled);
+  const nagPeriod = meta.data?.nag_period_seconds ?? 0;
 
   return (
     <div className="space-y-4">
@@ -78,6 +79,7 @@ export default function Channels() {
               </ul>
               <div className="flex flex-wrap items-center gap-2 text-[11px] text-ink-soft">
                 <span>{ch.up ? "宕机+恢复" : "仅宕机"}</span>
+                {ch.nag && nagPeriod > 0 ? <span className="text-late">每 {humanDuration(nagPeriod * 1000)} 催促</span> : null}
                 {ch.last_notify ? <span>最后发送 {formatDateTime(ch.last_notify)}</span> : null}
                 {ch.last_notify_duration ? <span>耗时 {humanDuration(ch.last_notify_duration * 1000)}</span> : null}
               </div>
@@ -111,6 +113,7 @@ export default function Channels() {
         open={creating || !!editing}
         channel={editing}
         schemas={meta.data?.apprise_schemas ?? []}
+        nagPeriod={nagPeriod}
         onClose={() => {
           setCreating(false);
           setEditing(null);
@@ -129,12 +132,14 @@ function ChannelForm({
   open,
   channel,
   schemas,
+  nagPeriod,
   onClose,
   onSaved,
 }: {
   open: boolean;
   channel: Channel | null;
   schemas: string[];
+  nagPeriod: number;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -143,6 +148,7 @@ function ChannelForm({
   const [urls, setUrls] = useState((channel?.urls ?? []).join("\n"));
   const [up, setUp] = useState(channel?.up ?? false);
   const [down, setDown] = useState(channel?.down ?? true);
+  const [nag, setNag] = useState(channel?.nag ?? false);
   const [error, setError] = useState("");
   const [seed, setSeed] = useState<string | null>(null);
 
@@ -153,12 +159,19 @@ function ChannelForm({
     setUrls((channel?.urls ?? []).join("\n"));
     setUp(channel?.up ?? false);
     setDown(channel?.down ?? true);
+    setNag(channel?.nag ?? false);
     setError("");
   }
 
   const save = useMutation({
     mutationFn: async () => {
-      const body = { name, urls: urls.split("\n").map((s) => s.trim()).filter(Boolean), up, down };
+      const body = {
+        name,
+        urls: urls.split("\n").map((s) => s.trim()).filter(Boolean),
+        up,
+        down,
+        nag: nagPeriod > 0 ? nag : false,
+      };
       if (channel) return api.updateChannel(channel.code, body);
       return api.createChannel(body);
     },
@@ -203,6 +216,13 @@ function ChannelForm({
         <div className="flex flex-wrap gap-4">
           <Toggle checked={down} onChange={setDown} label="宕机时通知" />
           <Toggle checked={up} onChange={setUp} label="恢复时通知" />
+          {nagPeriod > 0 ? (
+            <Toggle checked={nag} onChange={setNag} label={`宕机未恢复时每 ${humanDuration(nagPeriod * 1000)} 催促`} />
+          ) : (
+            <span className="self-center text-[11px] text-ink-soft">
+              重复催促未启用：设置环境变量 FEIXI_NAG_PERIOD（如 30m、1h）后可按渠道开启
+            </span>
+          )}
         </div>
         {error ? <div className="text-xs text-down">{error}</div> : null}
         <div className="flex justify-end gap-2">

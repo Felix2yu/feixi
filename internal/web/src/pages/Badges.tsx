@@ -15,10 +15,14 @@ const variants: Array<{ key: Variant; label: string; note: string }> = [
 export default function Badges() {
   const badges = useQuery({ queryKey: ["badges"], queryFn: api.badges });
   const checks = useQuery({ queryKey: ["checks"], queryFn: api.checks });
+  const project = useQuery({ queryKey: ["project"], queryFn: api.project });
   const [variant, setVariant] = useState<Variant>("svg3");
 
   if (badges.isLoading) return <div className="text-sm text-ink-soft">加载中…</div>;
   const entries = Object.entries(badges.data?.badges ?? {});
+  const statusPageURL = project.data
+    ? `${project.data.site_root.replace(/\/+$/, "")}/status/${project.data.badge_key}`
+    : "";
 
   return (
     <div className="space-y-4">
@@ -28,6 +32,31 @@ export default function Badges() {
           徽章地址带签名，公开也没法猜；把它贴进 README 或内部门户即可。改地址需要重新生成，签名与项目密钥绑定。
         </p>
       </div>
+
+      {statusPageURL && (
+        <div className="space-y-2 rounded-lg border border-line bg-surface p-4 dark:bg-transparent">
+          <h2 className="text-sm font-semibold">对外状态页</h2>
+          <p className="text-xs text-ink-soft">
+            只读的公开状态页，不带任何管理入口；地址含项目密钥，无法被猜到，可直接发给外部团队或挂到内部门户。
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              readOnly
+              value={statusPageURL}
+              className="min-w-0 max-w-xl flex-1 truncate rounded border border-line bg-canvas px-2 py-1 font-mono text-[11px]"
+            />
+            <CopyButton value={statusPageURL} />
+            <a
+              href={statusPageURL}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-md border border-line px-2.5 py-1 text-xs text-ink-soft hover:text-ink"
+            >
+              打开
+            </a>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2">
         {variants.map((v) => (

@@ -25,6 +25,9 @@ export interface Check {
   filter_body: boolean;
   filter_http_body: boolean;
   filter_default_fail: boolean;
+  failure_tolerance: number;
+  failure_count?: number;
+  flapping?: boolean;
   badge_url: string;
   uuid: string;
   ping_url: string;
@@ -49,12 +52,44 @@ export interface Ping {
   rid: string | null;
   body_url: string | null;
   duration?: number;
+  exit_status?: number | null;
 }
 
 export interface FlipEvent {
   timestamp: string;
   up: 0 | 1;
+  old_status?: string;
+  new_status?: string;
+  reason?: "" | "timeout" | "fail";
 }
+
+// 检查项事件流的一行：ping、状态翻转、通知投递三者合并。
+export type StreamEvent =
+  | {
+      type: "ping";
+      date: string;
+      n: number;
+      kind: Ping["type"];
+      rid: string | null;
+      duration?: number;
+      exit_status?: number;
+    }
+  | {
+      type: "flip";
+      date: string;
+      up: boolean;
+      old_status: string;
+      new_status: string;
+      reason?: "timeout" | "fail";
+    }
+  | {
+      type: "notification";
+      date: string;
+      code: string;
+      channel: string;
+      status: "up" | "down" | "flap" | "stable";
+      error: string;
+    };
 
 export interface Channel {
   code: string;
@@ -63,10 +98,19 @@ export interface Channel {
   urls: string[];
   up: boolean;
   down: boolean;
+  nag: boolean;
   disabled: boolean;
   last_notify: string | null;
   last_notify_duration: number | null;
   last_error: string;
+}
+
+export interface Meta {
+  apprise_schemas: string[];
+  site_root: string;
+  nag_period_seconds: number;
+  flap_window_seconds: number;
+  flap_threshold: number;
 }
 
 export interface NotificationRow {
@@ -84,6 +128,25 @@ export interface DowntimeRow {
   count: number;
   uptime: number;
   no_data: boolean;
+}
+
+export interface StatusPageCheck {
+  name: string;
+  tags: string;
+  status: Display;
+  started: boolean;
+  flapping: boolean;
+  last_ping: string | null;
+}
+
+export interface StatusPageData {
+  project: string;
+  summary: "ok" | "grace" | "down";
+  total: number;
+  down: number;
+  grace: number;
+  updated_at: string;
+  checks: StatusPageCheck[];
 }
 
 export interface StatusFeed {
@@ -127,5 +190,6 @@ export interface CheckSpec {
   start_kw?: string;
   success_kw?: string;
   failure_kw?: string;
+  failure_tolerance?: number;
   unique?: string[];
 }

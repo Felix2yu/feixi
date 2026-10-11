@@ -10,6 +10,7 @@ import CheckForm from "./pages/CheckForm";
 import Dashboard from "./pages/Dashboard";
 import History from "./pages/History";
 import Settings from "./pages/Settings";
+import StatusPage from "./pages/StatusPage";
 import "./index.css";
 
 const queryClient = new QueryClient({
@@ -19,6 +20,7 @@ const queryClient = new QueryClient({
 });
 
 const router = createBrowserRouter([
+  { path: "/status/:key", element: <StatusPage /> },
   {
     path: "/",
     element: <App />,

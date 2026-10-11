@@ -4,10 +4,13 @@ import type {
   CheckSpec,
   DowntimeRow,
   FlipEvent,
+  Meta,
   NotificationRow,
   Ping,
   ProjectInfo,
   StatusFeed,
+  StatusPageData,
+  StreamEvent,
 } from "./types";
 
 export class ApiError extends Error {
@@ -61,12 +64,19 @@ export const api = {
   deleteChannel: (code: string) => request<void>(`/front/channels/${code}`, { method: "DELETE" }),
   testChannel: (code: string) => request<string>(`/front/channels/${code}/test`, { method: "POST", body: "" }),
   status: () => request<StatusFeed>("/front/status"),
+  statusPage: (key: string) =>
+    request<StatusPageData>(`/front/status-page/${encodeURIComponent(key)}`),
   project: () => request<ProjectInfo>("/front/project"),
   downtimes: (uuid: string, tz: string) =>
     request<{ downtimes: DowntimeRow[] }>(`/front/checks/${uuid}/downtimes?tz=${encodeURIComponent(tz)}`),
+  events: (uuid: string) => request<{ events: StreamEvent[] }>(`/front/checks/${uuid}/events`),
+  checkStatusText: (uuid: string) =>
+    fetch(`/front/checks/${uuid}/status`).then((r) => (r.ok ? r.text() : Promise.reject(new ApiError(`HTTP ${r.status}`, r.status)))),
   notifications: () => request<{ notifications: NotificationRow[] }>("/front/notifications?limit=100"),
+  retryNotification: (code: string) =>
+    request<string>(`/front/notifications/${code}/retry`, { method: "POST", body: "" }),
   badges: () => request<{ badges: Record<string, Record<string, string>> }>(`${API}/badges/`),
-  meta: () => request<{ apprise_schemas: string[]; site_root: string }>("/front/meta"),
+  meta: () => request<Meta>("/front/meta"),
   previewSchedule: (schedule: string, tz: string) =>
     request<{ next: string[] }>("/front/schedule/preview", {
       method: "POST",

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button, Card, Field, Input, Select, Textarea, Toggle, cx, useToast } from "../components/ui";
 import { api } from "../lib/api";
+import { humanDuration } from "../lib/time";
 import type { CheckSpec } from "../lib/types";
 
 const TIMEOUT_PRESETS: Array<{ label: string; seconds: number }> = [
@@ -43,6 +44,7 @@ export default function CheckForm() {
     enabled: editing,
   });
   const channels = useQuery({ queryKey: ["channels"], queryFn: api.channels });
+  const meta = useQuery({ queryKey: ["meta"], queryFn: api.meta });
 
   const [form, setForm] = useState({
     name: "",
@@ -60,6 +62,7 @@ export default function CheckForm() {
     start_kw: "",
     success_kw: "",
     failure_kw: "",
+    failure_tolerance: 0,
     channelCodes: [] as string[],
   });
   const [mode, setMode] = useState<"text" | "grid">("text");
@@ -85,6 +88,7 @@ export default function CheckForm() {
       start_kw: c.start_kw,
       success_kw: c.success_kw,
       failure_kw: c.failure_kw,
+      failure_tolerance: c.failure_tolerance ?? 0,
       channelCodes: channels.data?.channels.map((ch) => ch.code).filter((code) => (c.channels || "").split(",").includes(code)) ?? [],
     });
   }, [existing.data, channels.data]);
@@ -114,6 +118,7 @@ export default function CheckForm() {
         start_kw: form.start_kw,
         success_kw: form.success_kw,
         failure_kw: form.failure_kw,
+        failure_tolerance: form.failure_tolerance,
         channels: form.channelCodes.join(","),
       };
       if (form.kind === "simple") {
@@ -337,6 +342,25 @@ export default function CheckForm() {
           onChange={(v) => setForm({ ...form, filter_http_body: v })}
           label="按请求体关键字判定状态"
         />
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium text-ink-soft">失败容忍次数</span>
+          <Input
+            type="number"
+            min={0}
+            max={100}
+            className="w-24!"
+            value={form.failure_tolerance}
+            onChange={(e) => setForm({ ...form, failure_tolerance: Math.max(0, Number(e.target.value) || 0) })}
+          />
+          <span className="text-xs text-ink-soft">
+            连续收到这么多个失败信号仍不告警，再失败一次才判宕（0 = 第一次失败即宕机；超时未到信号不受此限）
+          </span>
+        </div>
+        <p className="text-xs text-ink-soft">
+          抖动合并：{meta.data && meta.data.flap_threshold > 0
+            ? `最近 ${humanDuration(meta.data.flap_window_seconds * 1000)}内翻转 ≥ ${meta.data.flap_threshold} 次时自动暂停逐条告警，稳定一个窗口后恢复（FEIXI_FLAP_WINDOW / FEIXI_FLAP_THRESHOLD）`
+            : "已通过 FEIXI_FLAP_THRESHOLD=0 关闭"}
+        </p>
         </div>
         {form.filter_http_body ? (
           <div className="grid gap-3 md:grid-cols-3">

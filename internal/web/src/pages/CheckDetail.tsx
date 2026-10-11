@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Pause, Pencil, Play, Trash2 } from "lucide-react";
+import { Activity, ArrowDownCircle, ArrowLeft, ArrowUpCircle, BellRing, Pause, Pencil, Play, PauseCircle, RefreshCw, Trash2 } from "lucide-react";
 import { Fragment, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { StatusGlyph } from "../components/StatusGlyph";
@@ -8,7 +8,7 @@ import { api } from "../lib/api";
 import { buildRuns, timelineColor, type FlipEvent } from "../lib/timeline";
 import { statusMeta } from "../lib/status";
 import { formatDateTime, fromNow, humanDuration } from "../lib/time";
-import type { Ping } from "../lib/types";
+import type { Ping, StreamEvent } from "../lib/types";
 
 const localZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 
@@ -34,6 +34,17 @@ export default function CheckDetail() {
   const downtimes = useQuery({
     queryKey: ["downtimes", uuid],
     queryFn: () => api.downtimes(uuid, localZone),
+  });
+  const events = useQuery({ queryKey: ["events", uuid], queryFn: () => api.events(uuid), refetchInterval: 15000 });
+
+  const retryNotice = useMutation({
+    mutationFn: (code: string) => api.retryNotification(code),
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ["events", uuid] });
+      client.invalidateQueries({ queryKey: ["notifications"] });
+      toast("已重新发送");
+    },
+    onError: (e: Error) => toast(e.message, "error"),
   });
 
   const refresh = () => {
@@ -90,6 +101,20 @@ export default function CheckDetail() {
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <h1 className="truncate text-lg font-semibold">{c.name || c.uuid}</h1>
             <span className={cx("rounded px-1.5 py-0.5 text-xs font-medium", meta.text)}>{meta.label}</span>
+            {c.flapping ? (
+              <span className="rounded bg-late/15 px-1.5 py-0.5 text-xs font-medium text-late" title="状态频繁翻转，逐条告警已合并">
+                抖动中
+              </span>
+            ) : null}
+            {c.failure_count ? (
+              <span
+                className="rounded bg-late/15 px-1.5 py-0.5 text-xs font-medium text-late"
+                title={`连续失败 ${c.failure_count} 次${c.failure_tolerance ? `，容忍 ${c.failure_tolerance} 次` : ""}`}
+              >
+                连续失败 {c.failure_count}
+                {c.failure_tolerance ? `/${c.failure_tolerance}` : ""}
+              </span>
+            ) : null}
             {c.tags
               .split(/\s+/)
               .filter(Boolean)
@@ -197,6 +222,8 @@ export default function CheckDetail() {
         </div>
       </div>
 
+      <EventStream events={events.data?.events ?? []} loading={events.isLoading} onRetry={(code) => retryNotice.mutate(code)} retrying={retryNotice.isPending} />
+
       <div className="space-y-2 rounded-lg border border-line bg-surface p-4 dark:bg-transparent">
         <h2 className="text-sm font-semibold">Ping 记录</h2>
         {(pings.data?.pings ?? []).length === 0 ? (
@@ -209,6 +236,7 @@ export default function CheckDetail() {
                 <th className="py-1 font-medium">类型</th>
                 <th className="py-1 font-medium">时间</th>
                 <th className="py-1 font-medium">时长</th>
+                <th className="py-1 font-medium">退出码</th>
                 <th className="py-1 font-medium">方法</th>
                 <th className="py-1 font-medium">来源</th>
                 <th className="py-1 font-medium">UA</th>
@@ -223,6 +251,9 @@ export default function CheckDetail() {
                     <td className="py-1">{kindLabel(p.type)}</td>
                     <td className="py-1">{formatDateTime(p.date)}</td>
                     <td className="py-1">{p.duration ? humanDuration(p.duration * 1000) : "—"}</td>
+                    <td className={cx("py-1", p.exit_status ? "font-medium text-down" : "text-ink-soft")}>
+                      {p.exit_status !== undefined && p.exit_status !== null ? p.exit_status : "—"}
+                    </td>
                     <td className="py-1">{p.method || "GET"}</td>
                     <td className="py-1 font-mono">{p.remote_addr}</td>
                     <td className="max-w-40 truncate py-1 text-ink-soft" title={p.ua}>
@@ -251,7 +282,7 @@ function BodyRow({ uuid, n }: { uuid: string; n: number }) {
   const body = useQuery({ queryKey: ["ping-body", uuid, n], queryFn: () => api.pingBody(uuid, n) });
   return (
     <tr>
-      <td colSpan={8} className="bg-canvas px-2 py-2">
+      <td colSpan={9} className="bg-canvas px-2 py-2">
         {body.isLoading ? (
           <span className="text-xs text-ink-soft">读取中…</span>
         ) : (
@@ -295,4 +326,122 @@ function uptimeTone(uptime: number): string {
   if (uptime >= 0.999) return "border-up/40 bg-up/10 text-ink";
   if (uptime >= 0.99) return "border-late/40 bg-late/10 text-ink";
   return "border-down/40 bg-down/10 text-ink";
+}
+
+// EventStream merges signals, status transitions and alert deliveries into one
+// timeline so an outage reads as a story instead of three unrelated tables.
+function EventStream({
+  events,
+  loading,
+  onRetry,
+  retrying,
+}: {
+  events: StreamEvent[];
+  loading: boolean;
+  onRetry: (code: string) => void;
+  retrying: boolean;
+}) {
+  return (
+    <div className="space-y-2 rounded-lg border border-line bg-surface p-4 dark:bg-transparent">
+      <h2 className="text-sm font-semibold">事件流</h2>
+      {loading && events.length === 0 ? (
+        <div className="text-xs text-ink-soft">加载中…</div>
+      ) : events.length === 0 ? (
+        <EmptyState>还没有事件。</EmptyState>
+      ) : (
+        <ul className="max-h-96 space-y-1 overflow-auto pr-1">
+          {events.map((e, i) => (
+            <li key={i} className="flex items-start gap-2 border-t border-line py-1 text-xs first:border-t-0">
+              <span className="mt-0.5 w-32 shrink-0 text-ink-soft">{formatDateTime(e.date)}</span>
+              <EventIcon e={e} />
+              <span className="min-w-0 flex-1">
+                <EventText e={e} />
+              </span>
+              {e.type === "notification" && e.error ? (
+                <button
+                  className="inline-flex shrink-0 items-center gap-1 rounded border border-line px-1.5 py-0.5 text-ink-soft hover:text-ink disabled:opacity-50"
+                  disabled={retrying}
+                  title={e.error === "Sending" ? "正在投递中" : e.error}
+                  onClick={() => e.type === "notification" && onRetry(e.code)}
+                >
+                  <RefreshCw size={11} /> 重发
+                </button>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function EventIcon({ e }: { e: StreamEvent }) {
+  if (e.type === "ping") {
+    return <Activity size={14} className="mt-0.5 shrink-0 text-ink-soft" />;
+  }
+  if (e.type === "notification") {
+    const tone = e.error ? "text-down" : e.status === "stable" ? "text-up" : e.status === "flap" ? "text-late" : "text-ink-soft";
+    return <BellRing size={14} className={cx("mt-0.5 shrink-0", tone)} />;
+  }
+  if (e.new_status === "down") return <ArrowDownCircle size={14} className="mt-0.5 shrink-0 text-down" />;
+  if (e.new_status === "up") return <ArrowUpCircle size={14} className="mt-0.5 shrink-0 text-up" />;
+  return <PauseCircle size={14} className="mt-0.5 shrink-0 text-ink-soft" />;
+}
+
+function EventText({ e }: { e: StreamEvent }) {
+  if (e.type === "ping") {
+    const parts = [kindLabel(e.kind)];
+    if (e.duration) parts.push(`运行 ${humanDuration(e.duration * 1000)}`);
+    if (e.exit_status !== undefined) parts.push(`退出码 ${e.exit_status}`);
+    if (e.rid) parts.push(`rid ${e.rid}`);
+    return (
+      <>
+        收到信号：
+        {parts.join(" · ")}
+      </>
+    );
+  }
+  if (e.type === "flip") {
+    return <span className={cx(e.new_status === "down" && "font-medium text-down")}>{flipText(e.old_status, e.new_status, e.reason)}</span>;
+  }
+  if (e.error === "") {
+    const kind =
+      e.status === "down"
+        ? "宕机告警"
+        : e.status === "flap"
+          ? "抖动告警（已合并逐条通知）"
+          : e.status === "stable"
+            ? "抖动结束通知"
+            : "恢复通知";
+    return (
+      <>
+        已通过「{e.channel || "已删除渠道"}」发送{kind}
+      </>
+    );
+  }
+  if (e.error === "Sending") {
+    return <span className="text-ink-soft">正在向「{e.channel || "已删除渠道"}」投递…</span>;
+  }
+  return (
+    <span className="text-down">
+      向「{e.channel || "已删除渠道"}」发送失败：{e.error}
+    </span>
+  );
+}
+
+function flipText(oldStatus: string, newStatus: string, reason?: "timeout" | "fail"): string {
+  switch (newStatus) {
+    case "down":
+      return reason === "fail"
+        ? "状态转为宕机：收到失败信号"
+        : "状态转为宕机：成功信号未按时到达，宽限期已过";
+    case "up":
+      return "状态恢复正常";
+    case "paused":
+      return "监控已暂停";
+    case "new":
+      return oldStatus === "paused" ? "监控已恢复，等待新的 ping" : "等待第一个 ping";
+    default:
+      return `状态变为 ${newStatus}`;
+  }
 }
