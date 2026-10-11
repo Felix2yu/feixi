@@ -37,6 +37,21 @@ type Config struct {
 	AlertScanInterval time.Duration
 	FlipIdleSleep     time.Duration
 
+	// NagPeriod is the gap between repeated reminders for a still-down check.
+	// Zero disables nagging entirely; channels must also opt in per channel.
+	NagPeriod time.Duration
+	// NagScanInterval is how often the daemon looks for due reminders.
+	NagScanInterval time.Duration
+
+	// FlapWindow is the rolling window in which FlapThreshold alertable
+	// transitions mark a check as flapping; zero threshold disables it.
+	FlapWindow time.Duration
+	// FlapThreshold is the number of down/up alerts inside one window after
+	// which per-flip alerts are merged into one flap notice.
+	FlapThreshold int
+	// FlapScanInterval is how often the daemon settles calmed-down checks.
+	FlapScanInterval time.Duration
+
 	LogLevel string
 }
 
@@ -61,6 +76,11 @@ func Default() *Config {
 		NotifyRetries:        envInt("FEIXI_NOTIFY_RETRIES", 2),
 		AlertScanInterval:    envDuration("FEIXI_ALERT_SCAN_INTERVAL", 2*time.Second),
 		FlipIdleSleep:        envDuration("FEIXI_FLIP_IDLE_SLEEP", time.Second),
+		NagPeriod:            envDuration("FEIXI_NAG_PERIOD", 0),
+		NagScanInterval:      envDuration("FEIXI_NAG_SCAN_INTERVAL", time.Minute),
+		FlapWindow:           envDuration("FEIXI_FLAP_WINDOW", time.Hour),
+		FlapThreshold:        envInt("FEIXI_FLAP_THRESHOLD", 3),
+		FlapScanInterval:     envDuration("FEIXI_FLAP_SCAN_INTERVAL", time.Minute),
 		LogLevel:             env("FEIXI_LOG", "info"),
 	}
 }
