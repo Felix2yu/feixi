@@ -753,3 +753,53 @@ func TestClearEventsEndpoint(t *testing.T) {
 		t.Errorf("unknown check = %d, want 404", res.StatusCode)
 	}
 }
+
+func checkDoc(t *testing.T, ts *testServer, uuid string) map[string]any {
+	t.Helper()
+	doc := decode(t, ts.do(t, "GET", "/api/v3/checks/", nil))
+	for _, raw := range doc["checks"].([]any) {
+		c := raw.(map[string]any)
+		if c["uuid"] == uuid {
+			return c
+		}
+	}
+	t.Fatalf("check %s missing from the list", uuid)
+	return nil
+}
+
+func TestProjectUpdateEndpoint(t *testing.T) {
+	ts, _ := newFrontServer(t, &fakeNotifier{})
+
+	doc := decode(t, ts.do(t, "POST", "/front/project", map[string]any{"name": "家里的活", "show_slugs": true}))
+	if doc["name"] != "家里的活" || doc["show_slugs"] != true {
+		t.Fatalf("project = %+v", doc)
+	}
+
+	// 只发一半：另一半保持原值。
+	doc = decode(t, ts.do(t, "POST", "/front/project", map[string]any{"name": "换个名字"}))
+	if doc["name"] != "换个名字" || doc["show_slugs"] != true {
+		t.Errorf("project = %+v, want show_slugs untouched", doc)
+	}
+
+	for _, bad := range []map[string]any{{"name": "   "}, {"name": strings.Repeat("长", 201)}} {
+		if res := ts.do(t, "POST", "/front/project", bad); res.StatusCode != http.StatusBadRequest {
+			t.Errorf("name %q = %d, want 400", bad["name"], res.StatusCode)
+		}
+	}
+
+	// slug 形态开着时 API 给的是 <ping_key>/<slug>；没 slug 的检查项仍用 UUID。
+	pingKey := decode(t, ts.do(t, "GET", "/front/project", nil))["ping_key"].(string)
+	_, withSlug := createCheck(t, ts, map[string]any{"name": "带标识", "slug": "nightly"})
+	_, noSlug := createCheck(t, ts, map[string]any{"name": "只有名字"})
+	if got := checkDoc(t, ts, withSlug)["ping_url"]; got != "http://example.test/ping/"+pingKey+"/nightly" {
+		t.Errorf("ping_url = %v, want the slug form", got)
+	}
+	if got := checkDoc(t, ts, noSlug)["ping_url"]; got != "http://example.test/ping/"+noSlug {
+		t.Errorf("ping_url without a slug = %v, want the UUID form", got)
+	}
+
+	decode(t, ts.do(t, "POST", "/front/project", map[string]any{"show_slugs": false}))
+	if got := checkDoc(t, ts, withSlug)["ping_url"]; got != "http://example.test/ping/"+withSlug {
+		t.Errorf("ping_url after switching back = %v, want the UUID form", got)
+	}
+}

@@ -165,6 +165,7 @@ export interface ProjectInfo {
   name: string;
   badge_key: string;
   ping_key: string;
+  show_slugs: boolean;
   check_count: number;
   max_checks: number;
   ping_body_limit: number;

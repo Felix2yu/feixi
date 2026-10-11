@@ -67,6 +67,10 @@ export const api = {
   statusPage: (key: string) =>
     request<StatusPageData>(`/front/status-page/${encodeURIComponent(key)}`),
   project: () => request<ProjectInfo>("/front/project"),
+  updateProject: (body: { name?: string; show_slugs?: boolean }) =>
+    request<ProjectInfo>("/front/project", { method: "POST", body: JSON.stringify(body) }),
+  clearEvents: (uuid: string) =>
+    request<string>(`/front/checks/${uuid}/clear-events`, { method: "POST", body: "" }),
   downtimes: (uuid: string, tz: string) =>
     request<{ downtimes: DowntimeRow[] }>(`/front/checks/${uuid}/downtimes?tz=${encodeURIComponent(tz)}`),
   events: (uuid: string) => request<{ events: StreamEvent[] }>(`/front/checks/${uuid}/events`),

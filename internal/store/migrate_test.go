@@ -201,3 +201,31 @@ func TestNullHelpers(t *testing.T) {
 		t.Errorf("nullBool(false) = %d", got)
 	}
 }
+
+func TestSetProjectWritesNameAndSlugMode(t *testing.T) {
+	db := testDB(t)
+	p := testProject(t, db)
+	ctx := context.Background()
+
+	if err := db.SetProject(ctx, p.ID, "家里的活", true); err != nil {
+		t.Fatal(err)
+	}
+	got, err := db.Project(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Name != "家里的活" || !got.ShowSlugs {
+		t.Errorf("project = %+v, want the new name with slug URLs on", got)
+	}
+
+	if err := db.SetProject(ctx, p.ID, "家里的活", false); err != nil {
+		t.Fatal(err)
+	}
+	if again, err := db.Project(ctx); err != nil || again.ShowSlugs || again.Name != "家里的活" {
+		t.Errorf("project = %+v/%v, want slug mode off with the name kept", again, err)
+	}
+	// 两个键都不许被顺带改掉：ping_key 是脚本里写死的地址。
+	if again, err := db.ProjectByPingKey(ctx, p.PingKey); err != nil || again.ID != p.ID {
+		t.Errorf("ping_key lookup after editing = %v/%v, want the same project", again, err)
+	}
+}

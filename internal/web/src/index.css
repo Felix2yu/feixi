@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* 深色由 html 上的 .dark 决定：没手动选过时跟着系统走，选过就以选的为准。 */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-up: #4caf50;
   --color-late: #fe7d37;
@@ -10,12 +13,30 @@
   --color-line: #e4e7eb;
   --color-ink: #1f2933;
   --color-ink-soft: #5b6672;
+  --color-accent: #1f2933;
+  --color-accent-ink: #ffffff;
+}
+
+/* 反相的两个 token 是选中态的底与字：ink 在深色里会变浅，不能直接拿来当底。 */
+.dark {
+  color-scheme: dark;
+  --color-surface: #171c23;
+  --color-canvas: #12161c;
+  --color-line: #2a323d;
+  --color-ink: #e6eaf0;
+  --color-ink-soft: #97a1ad;
+  --color-accent: #e6eaf0;
+  --color-accent-ink: #12161c;
 }
 
 html,
 body,
 #root {
   height: 100%;
+}
+
+:root {
+  color-scheme: light;
 }
 
 body {
@@ -26,13 +47,6 @@ body {
     ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
     "PingFang SC", "Microsoft YaHei", sans-serif;
   font-size: 14px;
-}
-
-@media (prefers-color-scheme: dark) {
-  body {
-    background: #12161c;
-    color: #e6eaf0;
-  }
 }
 
 /* The three bouncing dots mean "a run started and has not finished". */

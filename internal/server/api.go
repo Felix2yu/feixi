@@ -462,7 +462,7 @@ func (h *apiHandler) listChecks(w http.ResponseWriter, r *http.Request, v int) {
 		if len(filter.Tags) > 0 && !hasAllTags(c.Tags, filter.Tags) {
 			continue
 		}
-		d, err := h.checkDict(r.Context(), c, v)
+		d, err := h.checkDict(r.Context(), c, v, project)
 		if err != nil {
 			jsonError(w, http.StatusInternalServerError, "服务器错误")
 			return
@@ -528,7 +528,7 @@ func (h *apiHandler) createCheck(w http.ResponseWriter, r *http.Request, v int) 
 				return
 			}
 		}
-		d, err := h.checkDict(r.Context(), existing, v)
+		d, err := h.checkDict(r.Context(), existing, v, project)
 		if err != nil {
 			jsonError(w, http.StatusInternalServerError, "服务器错误")
 			return
@@ -615,7 +615,7 @@ func (h *apiHandler) createCheck(w http.ResponseWriter, r *http.Request, v int) 
 		return
 	}
 
-	d, err := h.checkDict(r.Context(), c, v)
+	d, err := h.checkDict(r.Context(), c, v, project)
 	if err != nil {
 		jsonError(w, http.StatusInternalServerError, "服务器错误")
 		return
@@ -716,11 +716,11 @@ func (h *apiHandler) findCheck(w http.ResponseWriter, r *http.Request) (*engine.
 }
 
 func (h *apiHandler) getCheck(w http.ResponseWriter, r *http.Request, v int) {
-	c, _, ok := h.findCheck(w, r)
+	c, project, ok := h.findCheck(w, r)
 	if !ok {
 		return
 	}
-	d, err := h.checkDict(r.Context(), c, v)
+	d, err := h.checkDict(r.Context(), c, v, project)
 	if err != nil {
 		jsonError(w, http.StatusInternalServerError, "服务器错误")
 		return
@@ -765,7 +765,7 @@ func (h *apiHandler) updateCheck(w http.ResponseWriter, r *http.Request, v int) 
 		}
 	}
 
-	d, err := h.checkDict(r.Context(), c, v)
+	d, err := h.checkDict(r.Context(), c, v, project)
 	if err != nil {
 		jsonError(w, http.StatusInternalServerError, "服务器错误")
 		return
@@ -786,12 +786,12 @@ func (h *apiHandler) deleteCheck(w http.ResponseWriter, r *http.Request, v int) 
 }
 
 func (h *apiHandler) pause(w http.ResponseWriter, r *http.Request, v int) {
-	c, _, ok := h.findCheck(w, r)
+	c, project, ok := h.findCheck(w, r)
 	if !ok {
 		return
 	}
 	if c.Status == engine.StatusPaused {
-		d, err := h.checkDict(r.Context(), c, v)
+		d, err := h.checkDict(r.Context(), c, v, project)
 		if err != nil {
 			jsonError(w, http.StatusInternalServerError, "服务器错误")
 			return
@@ -805,7 +805,7 @@ func (h *apiHandler) pause(w http.ResponseWriter, r *http.Request, v int) {
 		jsonError(w, http.StatusInternalServerError, "服务器错误")
 		return
 	}
-	d, err := h.checkDict(r.Context(), updated, v)
+	d, err := h.checkDict(r.Context(), updated, v, project)
 	if err != nil {
 		jsonError(w, http.StatusInternalServerError, "服务器错误")
 		return
@@ -814,7 +814,7 @@ func (h *apiHandler) pause(w http.ResponseWriter, r *http.Request, v int) {
 }
 
 func (h *apiHandler) resume(w http.ResponseWriter, r *http.Request, v int) {
-	c, _, ok := h.findCheck(w, r)
+	c, project, ok := h.findCheck(w, r)
 	if !ok {
 		return
 	}
@@ -828,7 +828,7 @@ func (h *apiHandler) resume(w http.ResponseWriter, r *http.Request, v int) {
 		jsonError(w, http.StatusInternalServerError, "服务器错误")
 		return
 	}
-	d, err := h.checkDict(r.Context(), updated, v)
+	d, err := h.checkDict(r.Context(), updated, v, project)
 	if err != nil {
 		jsonError(w, http.StatusInternalServerError, "服务器错误")
 		return

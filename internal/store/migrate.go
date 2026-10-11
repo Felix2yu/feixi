@@ -137,6 +137,17 @@ func (db *DB) Seed(ctx context.Context, overrideSecret string) (*Project, error)
 	return project, nil
 }
 
+// SetProject writes the two fields the settings page owns: the display name and
+// whether ping URLs are shown in the slug form.
+func (db *DB) SetProject(ctx context.Context, projectID int64, name string, showSlugs bool) error {
+	return db.WriteTx(ctx, func(tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx,
+			`UPDATE projects SET name = ?, show_slugs = ? WHERE id = ?`,
+			name, boolInt(showSlugs), projectID)
+		return err
+	})
+}
+
 func (db *DB) ProjectByPingKey(ctx context.Context, pingKey string) (*Project, error) {
 	if pingKey == "" {
 		return nil, ErrNotFound

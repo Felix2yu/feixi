@@ -7,7 +7,17 @@ import (
 
 	"github.com/yufei/feixi/internal/engine"
 	"github.com/yufei/feixi/internal/format"
+	"github.com/yufei/feixi/internal/store"
 )
+
+// pingURL honours the project's preferred URL shape: the slug form reads better
+// in scripts, but a check without a slug keeps its UUID address.
+func pingURL(siteRoot string, project *store.Project, c *engine.Check) string {
+	if project != nil && project.ShowSlugs && c.Slug != "" {
+		return siteRoot + "/ping/" + project.PingKey + "/" + c.Slug
+	}
+	return siteRoot + "/ping/" + c.Code
+}
 
 // CheckDict is the API representation of a check. Field names and JSON shapes
 // are the compatibility surface for existing agents and scripts.
@@ -51,7 +61,7 @@ type CheckDict struct {
 	LastDuration *int    `json:"last_duration,omitempty"`
 }
 
-func (h *apiHandler) checkDict(ctx context.Context, c *engine.Check, version int) (CheckDict, error) {
+func (h *apiHandler) checkDict(ctx context.Context, c *engine.Check, version int, project *store.Project) (CheckDict, error) {
 	// Only API v1 exposes "started"; every other reader wants the five real
 	// statuses.
 	withStarted := version == 1
@@ -89,7 +99,7 @@ func (h *apiHandler) checkDict(ctx context.Context, c *engine.Check, version int
 		Flapping:          c.Flapping,
 		BadgeURL:          h.cfg.SiteRoot + "/b/2/" + c.BadgeKey + ".svg",
 		UUID:              c.Code,
-		PingURL:           h.cfg.SiteRoot + "/ping/" + c.Code,
+		PingURL:           pingURL(h.cfg.SiteRoot, project, c),
 		Channels:          h.channelCodesFor(ctx, c.ID),
 	}
 	if hasGraceStart {

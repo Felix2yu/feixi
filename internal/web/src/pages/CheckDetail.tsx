@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Activity, ArrowDownCircle, ArrowLeft, ArrowUpCircle, BellRing, Pause, Pencil, Play, PauseCircle, RefreshCw, Trash2 } from "lucide-react";
+import { Activity, ArrowDownCircle, ArrowLeft, ArrowUpCircle, BellRing, Eraser, Pause, Pencil, Play, PauseCircle, RefreshCw, Trash2 } from "lucide-react";
 import { Fragment, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { StatusGlyph } from "../components/StatusGlyph";
@@ -77,6 +77,16 @@ export default function CheckDetail() {
     },
     onError: (e: Error) => toast(e.message, "error"),
   });
+  const clear = useMutation({
+    mutationFn: () => api.clearEvents(uuid),
+    onSuccess: () => {
+      refresh();
+      client.invalidateQueries({ queryKey: ["pings", uuid] });
+      client.invalidateQueries({ queryKey: ["events", uuid] });
+      toast("已清空历史，等待新的 ping");
+    },
+    onError: (e: Error) => toast(e.message, "error"),
+  });
 
   if (check.isLoading) return <div className="text-sm text-ink-soft">加载中…</div>;
   if (check.error) return <EmptyState>找不到这个检查项。</EmptyState>;
@@ -151,6 +161,15 @@ export default function CheckDetail() {
               <Pencil size={14} /> 编辑
             </Button>
           </Link>
+          <Button
+            size="sm"
+            title="删掉全部 ping 记录，状态回到「新建」，宕机统计保留"
+            onClick={() => {
+              if (window.confirm("清空历史 ping？状态回到「新建」，宕机统计保留。")) clear.mutate();
+            }}
+          >
+            <Eraser size={14} /> 清空历史
+          </Button>
           <Button
             size="sm"
             variant="danger"

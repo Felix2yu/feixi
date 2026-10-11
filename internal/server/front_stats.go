@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -19,6 +20,7 @@ import (
 // offers on a single check.
 func (h *frontHandler) mountStats(r chi.Router) {
 	r.Get("/project", h.project)
+	r.Post("/project", h.updateProject)
 	r.Get("/checks/{code}/downtimes", h.downtimes)
 	r.Get("/checks/{code}/events", h.events)
 	r.Get("/checks/{code}/status", h.checkStatusText)
@@ -49,17 +51,60 @@ func (h *frontHandler) project(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	count, _ := h.db.CountChecks(r.Context(), project.ID)
-	writeJSON(w, http.StatusOK, map[string]any{
+	writeJSON(w, http.StatusOK, h.projectPayload(project, count))
+}
+
+// updateProject writes the two settings the page owns; fields left out of the
+// body keep their current value.
+func (h *frontHandler) updateProject(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Name      *string `json:"name"`
+		ShowSlugs *bool   `json:"show_slugs"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<16)).Decode(&body); err != nil {
+		jsonError(w, http.StatusBadRequest, "不是合法的 JSON")
+		return
+	}
+
+	project, err := h.db.Project(r.Context())
+	if err != nil {
+		jsonError(w, http.StatusInternalServerError, "服务器错误")
+		return
+	}
+	name, showSlugs := project.Name, project.ShowSlugs
+	if body.Name != nil {
+		name = strings.TrimSpace(*body.Name)
+		if n := len([]rune(name)); n == 0 || n > 200 {
+			jsonError(w, http.StatusBadRequest, "项目名需要 1 到 200 个字符")
+			return
+		}
+	}
+	if body.ShowSlugs != nil {
+		showSlugs = *body.ShowSlugs
+	}
+
+	if err := h.db.SetProject(r.Context(), project.ID, name, showSlugs); err != nil {
+		jsonError(w, http.StatusInternalServerError, "服务器错误")
+		return
+	}
+	project.Name, project.ShowSlugs = name, showSlugs
+	count, _ := h.db.CountChecks(r.Context(), project.ID)
+	writeJSON(w, http.StatusOK, h.projectPayload(project, count))
+}
+
+func (h *frontHandler) projectPayload(project *store.Project, checkCount int) map[string]any {
+	return map[string]any{
 		"name":               project.Name,
 		"badge_key":          project.BadgeKey,
 		"ping_key":           project.PingKey,
-		"check_count":        count,
+		"show_slugs":         project.ShowSlugs,
+		"check_count":        checkCount,
 		"max_checks":         h.cfg.MaxChecks,
 		"ping_body_limit":    h.cfg.PingBodyLimit,
 		"ping_log_limit":     h.cfg.PingLogLimit,
 		"site_root":          h.cfg.SiteRoot,
 		"master_badge_label": h.cfg.MasterBadgeLabel,
-	})
+	}
 }
 
 // boundedInt parses a positive integer query parameter without strconv's panic

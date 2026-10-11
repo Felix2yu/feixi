@@ -4,6 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>飞檄</title>
+    <script>
+      // 首屏前就把 .dark 挂上，避免深色偏好下白闪一下；规则与 src/lib/theme.ts 一致。
+      try {
+        var stored = localStorage.getItem("feixi-theme");
+        if (stored === "dark" || (!stored && matchMedia("(prefers-color-scheme: dark)").matches)) {
+          document.documentElement.classList.add("dark");
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

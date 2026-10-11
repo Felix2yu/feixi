@@ -1,7 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
+import { Moon, Sun } from "lucide-react";
+import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { api } from "./lib/api";
 import { cx } from "./components/ui";
+import { preferredTheme, toggleTheme, watchSystemTheme, type Theme } from "./lib/theme";
 
 const links = [
   { to: "/", label: "仪表板", end: true },
@@ -13,6 +16,8 @@ const links = [
 
 export default function App() {
   const project = useQuery({ queryKey: ["project"], queryFn: api.project });
+  const [theme, setTheme] = useState<Theme>(() => preferredTheme());
+  useEffect(() => watchSystemTheme(setTheme), []);
 
   return (
     <div className="min-h-full">
@@ -29,7 +34,7 @@ export default function App() {
                   className={({ isActive }) =>
                     cx(
                       "rounded-md px-2 py-1 text-sm",
-                      isActive ? "bg-ink text-white" : "text-ink-soft hover:text-ink",
+                      isActive ? "bg-accent text-accent-ink" : "text-ink-soft hover:text-ink",
                     )
                   }
                 >
@@ -38,8 +43,19 @@ export default function App() {
               ))}
             </nav>
           </div>
-          <div className="ml-auto hidden shrink-0 text-xs text-ink-soft sm:block">
-            {project.data ? `${project.data.name} · ${project.data.check_count}/${project.data.max_checks} 检查项` : "…"}
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            <span className="hidden text-xs text-ink-soft sm:block">
+              {project.data ? `${project.data.name} · ${project.data.check_count}/${project.data.max_checks} 检查项` : "…"}
+            </span>
+            <button
+              type="button"
+              onClick={() => setTheme(toggleTheme())}
+              title={theme === "dark" ? "切到浅色" : "切到深色"}
+              aria-label={theme === "dark" ? "切到浅色" : "切到深色"}
+              className="rounded-md p-1.5 text-ink-soft hover:bg-canvas hover:text-ink"
+            >
+              {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
           </div>
         </div>
       </header>

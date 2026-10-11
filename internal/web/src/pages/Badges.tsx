@@ -65,7 +65,7 @@ export default function Badges() {
             onClick={() => setVariant(v.key)}
             className={cx(
               "rounded-md border px-2.5 py-1 text-xs",
-              variant === v.key ? "border-ink bg-ink text-white" : "border-line text-ink-soft",
+              variant === v.key ? "border-ink bg-accent text-accent-ink" : "border-line text-ink-soft",
             )}
             title={v.note}
           >

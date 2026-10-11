@@ -13,6 +13,7 @@ type ButtonProps = {
   disabled?: boolean;
   title?: string;
   type?: "button" | "submit";
+  className?: string;
 };
 
 export function Button({
@@ -23,18 +24,19 @@ export function Button({
   disabled,
   title,
   type = "button",
+  className,
 }: ButtonProps) {
   const base =
     "inline-flex items-center gap-1.5 rounded-md border font-medium transition disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap";
   const sizes = size === "sm" ? "px-2 py-1 text-xs" : "px-3 py-1.5 text-sm";
   const variants = {
-    primary: "bg-ink text-white border-ink hover:opacity-90",
+    primary: "bg-accent text-accent-ink border-accent hover:opacity-90",
     outline: "bg-surface border-line text-ink hover:bg-canvas dark:bg-transparent",
     ghost: "border-transparent bg-transparent text-ink-soft hover:text-ink",
     danger: "border-down/40 text-down hover:bg-down/10",
   }[variant];
   return (
-    <button type={type} title={title} disabled={disabled} onClick={onClick} className={cx(base, sizes, variants)}>
+    <button type={type} title={title} disabled={disabled} onClick={onClick} className={cx(base, sizes, variants, className)}>
       {children}
     </button>
   );

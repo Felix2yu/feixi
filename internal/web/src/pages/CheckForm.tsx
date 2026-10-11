@@ -178,7 +178,7 @@ export default function CheckForm() {
               onClick={() => setForm({ ...form, kind: k })}
               className={cx(
                 "rounded-md border px-3 py-1 text-sm",
-                form.kind === k ? "border-ink bg-ink text-white" : "border-line text-ink-soft",
+                form.kind === k ? "border-ink bg-accent text-accent-ink" : "border-line text-ink-soft",
               )}
             >
               {k === "simple" ? "固定间隔" : "Cron 表达式"}
@@ -196,7 +196,7 @@ export default function CheckForm() {
                     onClick={() => setForm({ ...form, timeout: p.seconds })}
                     className={cx(
                       "rounded-md border px-2 py-1 text-xs",
-                      form.timeout === p.seconds ? "border-ink bg-ink text-white" : "border-line text-ink-soft",
+                      form.timeout === p.seconds ? "border-ink bg-accent text-accent-ink" : "border-line text-ink-soft",
                     )}
                   >
                     {p.label}
@@ -274,7 +274,7 @@ export default function CheckForm() {
                 onClick={() => setForm({ ...form, grace: g })}
                 className={cx(
                   "rounded-md border px-2 py-1 text-xs",
-                  form.grace === g ? "border-ink bg-ink text-white" : "border-line text-ink-soft",
+                  form.grace === g ? "border-ink bg-accent text-accent-ink" : "border-line text-ink-soft",
                 )}
               >
                 {g < 3600 ? `${g / 60} 分钟` : `${g / 3600} 小时`}
