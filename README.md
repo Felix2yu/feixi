@@ -19,7 +19,7 @@
 - 仪表板可按状态、名称、下次到期、最后 ping 排序（点表头，选择记在浏览器里），可勾选多项批量暂停 / 恢复 / 删除
 - 检查项可一键清空历史：回到「新建」重新计时，宕机统计与状态翻转记录保留
 - 整个项目的 ping 地址可在「设置」切成 `<项目前缀>/<slug>` 形态（没有 slug 的检查项仍用 UUID），深浅色也能手动切换，默认跟随系统
-- 可安装为 PWA：桌面与手机主屏都有独立窗口与图标（`/manifest.webmanifest` + 全套图标），但**有意不含离线能力**，见「边界」
+- 可安装为 PWA：桌面与手机主屏都有独立窗口与图标（`/manifest.webmanifest` + 全套图标），`/sw.js` 只给本次构建的壳与静态资源做秒开，**不承诺离线**，见「边界」
 
 ## 状态语义
 
@@ -169,13 +169,15 @@ make vet     # gofmt + go vet + tsc --noEmit
 
 PWA 图标的母版是 `internal/web/brand/favicon.svg`（+ 栅格化出的 `icon-512-source.png`）；`internal/web/public/` 下的七件套与 `favicon.svg` 是 `python3 /path/to/.github/pwa-preset/gen-icons.py --src internal/web/brand/icon-512-source.png --svg internal/web/brand/favicon.svg --bg '#1f2933' --out internal/web/public` 的产物，别手改。Vite 会把 `public/` 原样拷进 `dist/` 根，再由 `go:embed all:dist` 打进二进制。
 
+`public/sw.js` 的缓存名由本次构建的 `/assets` 文件名算出（发版即换名，activate 清旧），只在生产构建注册（`main.tsx` 里 `import.meta.env.DEV` 判掉），否则 vite 热更新会被旧壳拖住。这两个目录都在 `src/index.css` 的 `@source not` 里排除过：SVG 的 `transform="…"` 会被 Tailwind 当成 class 候选，白生成 `.transform` 与一串自定义属性。
+
 CI 接的是组织统一的 reusable workflow（`Felix2yu/.github`，pin 在 `@v1`）：`test` → `image` → `release` 三个 job。版本号由 git tag 通过 `-X main.version` 注入，本地 `go build` 出来是 `dev`。工具链版本只有一个来源：仓库根 `.nvmrc` 与 `internal/web/package.json` 的 `packageManager`。
 
 ## 边界
 
 以下这些**有意不做**，需要时再评估，别顺手加上：
 
-- 离线可用与 Service Worker：断网时面板里没有可展示的数据，兜底页只会误导，故 PWA 只做到「能装、有图标、独立窗口」，不注册 SW
+- 离线可用：`sw.js` 只缓存本次构建的壳与静态资源，`/api`、`/front`、`/ping`、`/badge` 一律不缓存也不回落 —— 断网时打开的是上一次构建的空壳加空态，不拿旧数据冒充新数据。要的是安装入口与秒开，不是离线
 - 多用户、团队、权限与登录：单实例内网自用，访问控制交给反向代理
 - 邮件形态的日报 / 周报：要额外维护 SMTP 与一套发送状态（宕机催促已按渠道内置，见 `FEIXI_NAG_PERIOD`）
 - 用邮件地址发 ping、把大请求体外置到对象存储
