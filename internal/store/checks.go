@@ -137,10 +137,23 @@ func (db *DB) CheckBySlugStrict(ctx context.Context, projectID int64, slug strin
 	return found, rows.Err()
 }
 
+// OrderBys are the values ?orderby= accepts; the "-" prefix is descending.
+var OrderBys = []string{"name", "-name", "last_ping", "-last_ping", "created"}
+
 type CheckFilter struct {
 	Tags    []string
 	Slugs   []string
 	OrderBy string
+}
+
+// ValidOrderBy reports whether f is one of OrderBys.
+func ValidOrderBy(s string) bool {
+	for _, v := range OrderBys {
+		if s == v {
+			return true
+		}
+	}
+	return false
 }
 
 func (db *DB) ListChecks(ctx context.Context, projectID int64, f CheckFilter) ([]*engine.Check, error) {
@@ -162,6 +175,8 @@ func (db *DB) ListChecks(ctx context.Context, projectID int64, f CheckFilter) ([
 		q.raw(" ORDER BY name COLLATE NOCASE DESC")
 	case "created":
 		q.raw(" ORDER BY created ASC")
+	case "last_ping":
+		q.raw(" ORDER BY last_ping ASC")
 	case "-last_ping":
 		q.raw(" ORDER BY last_ping DESC")
 	default:
@@ -241,6 +256,10 @@ type NewCheck struct {
 	FailureKW     string
 	FailTolerance int
 	ChannelIDs    []int64
+	// AutoCreate marks a check provisioned by a first ping rather than by a
+	// person, so the caller gets headroom past MaxChecks: a job that suddenly
+	// sprouts task names should still record its pings instead of 404ing.
+	AutoCreate bool
 }
 
 func (db *DB) CreateCheck(ctx context.Context, in *NewCheck) (*engine.Check, error) {
@@ -249,12 +268,16 @@ func (db *DB) CreateCheck(ctx context.Context, in *NewCheck) (*engine.Check, err
 
 	err := db.WriteTx(ctx, func(tx *sql.Tx) error {
 		if db.MaxChecks > 0 {
+			limit := db.MaxChecks
+			if in.AutoCreate {
+				limit *= 2
+			}
 			var n int
 			if err := tx.QueryRowContext(ctx,
 				`SELECT count(*) FROM checks WHERE project_id = ?`, in.ProjectID).Scan(&n); err != nil {
 				return err
 			}
-			if n >= db.MaxChecks {
+			if n >= limit {
 				return ErrTooManyChecks
 			}
 		}

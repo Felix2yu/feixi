@@ -99,9 +99,12 @@ func (h *Handler) bySlug(w http.ResponseWriter, r *http.Request, pingKey, slug, 
 			Grace:      engine.DefaultGrace,
 			TZ:         "UTC",
 			ChannelIDs: ids,
+			AutoCreate: true,
 		})
 		if cerr != nil {
 			if errors.Is(cerr, store.ErrTooManyChecks) {
+				// 撞上限与"从未建过档"回同一个 404：发 ping 的是脚本，
+				// 它能做的只有一件事——别再指望这条 URL 有监控。
 				h.write(w, http.StatusNotFound, "未找到")
 				return
 			}

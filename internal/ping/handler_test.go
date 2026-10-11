@@ -47,7 +47,7 @@ func newFixture(t *testing.T, bodyLimit int) *fixture {
 	h := &Handler{DB: db, BodyLimit: bodyLimit, OnPrune: func(id int64) { f.pruned = append(f.pruned, id) }}
 
 	r := chi.NewRouter()
-	for _, method := range []string{"GET", "POST"} {
+	for _, method := range []string{"GET", "HEAD", "POST"} {
 		r.Method(method, "/ping/{first}", http.HandlerFunc(h.Root))
 		r.Method(method, "/ping/{first}/{second}", http.HandlerFunc(h.Root))
 		r.Method(method, "/ping/{first}/{second}/{third}", http.HandlerFunc(h.Root))
@@ -411,7 +411,38 @@ func TestBySlugRejected(t *testing.T) {
 	}
 }
 
-func TestBySlugCreateOverLimit(t *testing.T) {
+func TestHeadRecordsASuccessSignal(t *testing.T) {
+	f := newFixture(t, 100)
+	c := f.create(t, nil)
+
+	res := f.do(t, "HEAD", "/ping/"+c.Code, "", nil)
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", res.StatusCode)
+	}
+	if got := f.status(t, c.ID); got != engine.StatusUp {
+		t.Errorf("status = %q, want up", got)
+	}
+
+	pings, err := f.db.ListPings(context.Background(), c.ID, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pings) != 1 {
+		t.Fatalf("pings = %d, want 1", len(pings))
+	}
+	if pings[0].Method != "HEAD" {
+		t.Errorf("method = %q, want HEAD", pings[0].Method)
+	}
+	if pings[0].Kind != "" {
+		t.Errorf("kind = %q, want the bare success signal", pings[0].Kind)
+	}
+	// Go 只把 HEAD 的响应体丢掉，头还是要照发。
+	if res.Header.Get("Ping-Body-Limit") != "100" {
+		t.Errorf("Ping-Body-Limit = %q", res.Header.Get("Ping-Body-Limit"))
+	}
+}
+
+func TestBySlugCreateOverLimitHasHeadroom(t *testing.T) {
 	f := newFixture(t, 100)
 	f.db.MaxChecks = 1
 	if _, err := f.db.CreateCheck(context.Background(), &store.NewCheck{
@@ -421,9 +452,21 @@ func TestBySlugCreateOverLimit(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// 自动建档给脚本两倍余量：上限 1、已占 1，还能再建一个。
 	res := f.do(t, "GET", "/ping/"+f.project.PingKey+"/overflow?create=1", "", nil)
-	if res.StatusCode != http.StatusNotFound {
-		t.Errorf("status = %d, want 404 when the project is full", res.StatusCode)
+	if res.StatusCode != http.StatusCreated {
+		t.Fatalf("first auto-create = %d, want 201 inside the headroom", res.StatusCode)
+	}
+	if res := f.do(t, "GET", "/ping/"+f.project.PingKey+"/second?create=1", "", nil); res.StatusCode != http.StatusNotFound {
+		t.Errorf("past the headroom = %d, want 404", res.StatusCode)
+	}
+
+	// 管理 API 建档没有这层余量，一倍就到顶。
+	if _, err := f.db.CreateCheck(context.Background(), &store.NewCheck{
+		ProjectID: f.project.ID, Name: "手动", Kind: engine.KindSimple,
+		Timeout: engine.DefaultTimeout, Grace: engine.DefaultGrace, TZ: "UTC",
+	}); err != store.ErrTooManyChecks {
+		t.Errorf("manual create err = %v, want ErrTooManyChecks", err)
 	}
 }
 
@@ -526,6 +569,13 @@ func TestPostOnlyCheckIgnoresGetPing(t *testing.T) {
 	}
 	if got := f.status(t, c.ID); got != engine.StatusNew {
 		t.Errorf("status after a GET = %q, want new", got)
+	}
+	// HEAD 同样不算 POST。
+	if res := f.do(t, "HEAD", "/ping/"+c.Code+"/success", "", nil); res.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d", res.StatusCode)
+	}
+	if got := f.status(t, c.ID); got != engine.StatusNew {
+		t.Errorf("status after a HEAD = %q, want new", got)
 	}
 	if res := f.do(t, "POST", "/ping/"+c.Code+"/success", "", nil); res.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d", res.StatusCode)

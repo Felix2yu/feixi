@@ -29,8 +29,8 @@ type CheckDict struct {
 	StartKW           string  `json:"start_kw"`
 	SuccessKW         string  `json:"success_kw"`
 	FailureKW         string  `json:"failure_kw"`
-	FilterSubject     bool    `json:"filter_subject"`
-	FilterBody        bool    `json:"filter_body"`
+	FilterSubject     bool    `json:"filter_subject"` // 只有邮件通道用得上，本版本恒 false
+	FilterBody        bool    `json:"filter_body"`    // 同上；留字段是为了读取方的字段表完整
 	FilterHTTPBody    bool    `json:"filter_http_body"`
 	FilterDefaultFail bool    `json:"filter_default_fail"`
 	FailureTolerance  int     `json:"failure_tolerance"`

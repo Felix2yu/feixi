@@ -29,8 +29,9 @@ func New(cfg *config.Config, db *store.DB, d *daemon.Daemon, schemas []string, t
 	ph := &ping.Handler{DB: db, BodyLimit: cfg.PingBodyLimit, OnPrune: d.QueuePrune}
 
 	// One dispatcher covers both ping URL shapes: a UUID code, or the
-	// project ping_key plus a slug.
-	for _, method := range []string{"GET", "POST"} {
+	// project ping_key plus a slug. HEAD is a signal too: a probe that can
+	// only send HEAD still has to be counted.
+	for _, method := range []string{"GET", "HEAD", "POST"} {
 		r.Method(method, "/ping/{first}", http.HandlerFunc(ph.Root))
 		r.Method(method, "/ping/{first}/{second}", http.HandlerFunc(ph.Root))
 		r.Method(method, "/ping/{first}/{second}/{third}", http.HandlerFunc(ph.Root))

@@ -206,10 +206,10 @@ func (s *spec) validate() error {
 		return errors.New("JSON 验证错误：字段 \"failure_tolerance\" 需要在 0 到 100 之间")
 	}
 	if s.FilterSubject != nil && *s.FilterSubject {
-		return errors.New("JSON 验证错误：filter_subject 需要邮件通道，本版本不支持")
+		return errors.New("JSON 验证错误：filter_subject 只对邮件通道有意义，本版本请改用 filter_http_body 配 success_kw/failure_kw")
 	}
 	if s.FilterBody != nil && *s.FilterBody {
-		return errors.New("JSON 验证错误：filter_body 需要邮件通道，本版本不支持")
+		return errors.New("JSON 验证错误：filter_body 只对邮件通道有意义，本版本请改用 filter_http_body 配 success_kw/failure_kw")
 	}
 	if s.Unique != nil {
 		for _, u := range *s.Unique {
@@ -441,6 +441,14 @@ func (h *apiHandler) listChecks(w http.ResponseWriter, r *http.Request, v int) {
 	}
 	if slug := query.Get("slug"); slug != "" {
 		filter.Slugs = append(filter.Slugs, slug)
+	}
+	if orderby := query.Get("orderby"); orderby != "" {
+		if !store.ValidOrderBy(orderby) {
+			jsonError(w, http.StatusBadRequest,
+				"orderby 只能是 "+strings.Join(store.OrderBys, "、")+"，横杠前缀表示倒序")
+			return
+		}
+		filter.OrderBy = orderby
 	}
 
 	checks, err := h.db.ListChecks(r.Context(), project.ID, filter)

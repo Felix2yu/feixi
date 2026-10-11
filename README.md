@@ -59,9 +59,12 @@ curl http://localhost:8080/ping/<uuid>/success      # 成功（显式写法）
 curl http://localhost:8080/ping/<uuid>/fail         # 失败
 curl http://localhost:8080/ping/<uuid>/3            # 退出码 3 ⇒ 失败
 curl "http://localhost:8080/ping/<uuid>?rid=<uuid>" # 用同一个 rid 配对，算出运行时长
+curl -I http://localhost:8080/ping/<uuid>           # HEAD 同样算一次信号
 ```
 
-除了 UUID，也可以用 `<项目前缀>/<slug>` 形态的地址；带 `?create=1` 时首次 ping 会自动建档，适合任务名会动态变化的场景。
+三种方法都能用：`GET`、`HEAD`、`POST`。检查项打开「仅 POST」后，`GET`/`HEAD` 仍会留档，但记为忽略、不改状态。
+
+除了 UUID，也可以用 `<项目前缀>/<slug>` 形态的地址；带 `?create=1` 时首次 ping 会自动建档，适合任务名会动态变化的场景。自动建档的额度可以临时超到 `FEIXI_MAX_CHECKS` 的两倍——脚本突然多出一批任务名时先收下 ping，再由人去清；超过两倍仍回 `404`。
 
 ## 通知渠道
 
@@ -98,7 +101,8 @@ json://hooks.internal/feixi?:check=$NAME&:status=$STATUS&:body=$BODY
 `/api/v1|v2|v3` 三套路径共用实现（`status` 只有 v1 会返回 `started`）：
 
 ```bash
-curl $SITE_ROOT/api/v3/checks/                       # 列表，支持 ?tag= &slug=
+curl $SITE_ROOT/api/v3/checks/                       # 列表，支持 ?tag= &slug= &orderby=
+curl $SITE_ROOT/api/v3/checks/?orderby=-last_ping    # 排序：name -name last_ping -last_ping created
 curl -X POST $SITE_ROOT/api/v3/checks/ -d '{"name":"备份","timeout":3600,"grace":60}'
 curl -X POST $SITE_ROOT/api/v3/checks/<uuid>/pause
 curl -X POST $SITE_ROOT/api/v3/checks/<uuid>/resume  # 未暂停时返回 409
@@ -116,7 +120,7 @@ curl $SITE_ROOT/api/v3/badges/
 | `FEIXI_LISTEN` | `:8080` | 监听地址 |
 | `FEIXI_DB` | `data/feixi.db` | SQLite 文件路径 |
 | `FEIXI_SITE_ROOT` | `http://localhost<listen>` | 生成 ping_url / 徽章地址用的对外地址 |
-| `FEIXI_MAX_CHECKS` | `100` | 检查项数量上限 |
+| `FEIXI_MAX_CHECKS` | `100` | 检查项数量上限；`?create=1` 的自动建档可临时超到两倍 |
 | `FEIXI_PING_BODY_LIMIT` | `10000` | 单个 ping 请求体保留字节数 |
 | `FEIXI_PING_LOG_LIMIT` | `100` | 每个检查项保留的 ping 条数 |
 | `FEIXI_SECRET_KEY` | 自动生成并存库 | 徽章 URL 签名密钥 |

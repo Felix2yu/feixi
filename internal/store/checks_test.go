@@ -118,6 +118,25 @@ func TestCreateCheckMaxChecksLimit(t *testing.T) {
 		t.Errorf("err = %v, want ErrTooManyChecks", err)
 	}
 
+	// 自动建档有双倍余量：脚本突然多出一批任务名时先落库，别把 ping 丢掉。
+	auto := func() error {
+		_, err := db.CreateCheck(context.Background(), &NewCheck{
+			ProjectID: p.ID, Name: "自动", Kind: engine.KindSimple,
+			Timeout: engine.DefaultTimeout, Grace: engine.DefaultGrace, TZ: "UTC",
+			AutoCreate: true,
+		})
+		return err
+	}
+	// 上限 2、已用 2，余量到 4：还能再建两个。
+	for i := 0; i < 2; i++ {
+		if err := auto(); err != nil {
+			t.Fatalf("auto-create %d: %v", i, err)
+		}
+	}
+	if err := auto(); err != ErrTooManyChecks {
+		t.Errorf("err = %v, want ErrTooManyChecks past twice the limit", err)
+	}
+
 	// 上限为 0 表示不限制。
 	db.MaxChecks = 0
 	if _, err := db.CreateCheck(context.Background(), &NewCheck{
@@ -131,8 +150,8 @@ func TestCreateCheckMaxChecksLimit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n != 3 {
-		t.Errorf("CountChecks = %d, want 3", n)
+	if n != 5 {
+		t.Errorf("CountChecks = %d, want 2 建档 + 2 余量 + 1 不限", n)
 	}
 }
 

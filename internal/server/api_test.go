@@ -310,6 +310,44 @@ func checkNames(doc map[string]any) []string {
 	return out
 }
 
+func TestListOrderby(t *testing.T) {
+	ts := newTestServer(t)
+	codes := map[string]string{}
+	for _, name := range []string{"beta", "alpha", "gamma"} {
+		_, code := createCheck(t, ts, map[string]any{"name": name})
+		codes[name] = code
+	}
+
+	if res := ts.do(t, "GET", "/api/v3/checks/?orderby=最近", ""); res.StatusCode != http.StatusBadRequest {
+		t.Errorf("unknown orderby = %d, want 400", res.StatusCode)
+	}
+
+	tests := []struct {
+		query string
+		want  string
+	}{
+		{"", "gamma,alpha,beta"},                 // 默认按建档时间倒序
+		{"?orderby=created", "beta,alpha,gamma"}, // 建档时间正序
+		{"?orderby=name", "alpha,beta,gamma"},
+		{"?orderby=-name", "gamma,beta,alpha"},
+	}
+	for _, tt := range tests {
+		doc := decode(t, ts.do(t, "GET", "/api/v3/checks/"+tt.query, ""))
+		if got := strings.Join(checkNames(doc), ","); got != tt.want {
+			t.Errorf("checks%s = %v, want %s", tt.query, got, tt.want)
+		}
+	}
+
+	// 最后 ping 排序：只有报过到的排得在前面。
+	if res := ts.do(t, "GET", "/ping/"+codes["beta"], ""); res.StatusCode != http.StatusOK {
+		t.Fatalf("ping = %d", res.StatusCode)
+	}
+	doc := decode(t, ts.do(t, "GET", "/api/v3/checks/?orderby=-last_ping", ""))
+	if got := checkNames(doc)[0]; got != "beta" {
+		t.Errorf("-last_ping puts %q first, want beta", got)
+	}
+}
+
 func TestPingsEndpointAndBody(t *testing.T) {
 	ts := newTestServer(t)
 	_, code := createCheck(t, ts, map[string]any{"name": "body"})
