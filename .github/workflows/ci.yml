@@ -28,8 +28,8 @@ jobs:
       # go.mod 在仓库根，前端在 internal/web
       go-dir: .
       web-dir: internal/web
-      # ./... 是安全的：internal/web/dist 里提交了一个占位 index.html，
-      # 没构建前端时 //go:embed all:dist 也能解析通过。
+      # ./... 是安全的：internal/web/dist 里提交了一个占位 .gitkeep，
+      # 没构建前端时 //go:embed all:dist 也能解析通过（静态资源走 public/，构建时拷进 dist）。
       test-packages: ./...
 
   image:
