@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+@theme {
+  --color-up: #4caf50;
+  --color-late: #fe7d37;
+  --color-down: #e05d44;
+  --color-idle: #9aa3af;
+  --color-surface: #ffffff;
+  --color-canvas: #f6f7f9;
+  --color-line: #e4e7eb;
+  --color-ink: #1f2933;
+  --color-ink-soft: #5b6672;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 14px;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background: #12161c;
+    color: #e6eaf0;
+  }
+}
+
+/* The three bouncing dots mean "a run started and has not finished". */
+@keyframes feixi-bounce {
+  0%,
+  80%,
+  100% {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.spinner {
+  display: inline-flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.spinner > span {
+  width: 4px;
+  height: 4px;
+  border-radius: 9999px;
+  background: currentColor;
+  animation: feixi-bounce 1.2s infinite ease-in-out;
+}
+
+.spinner > span:nth-child(2) {
+  animation-delay: 0.16s;
+}
+
+.spinner > span:nth-child(3) {
+  animation-delay: 0.32s;
+}

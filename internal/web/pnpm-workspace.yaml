@@ -1,0 +1,4 @@
+# pnpm 默认不执行依赖的安装脚本，esbuild 需要 postinstall 来落平台二进制。
+# 逐个批准而不是全局放开：只有确知需要的构建脚本会被执行。
+allowBuilds:
+  esbuild: true
