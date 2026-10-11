@@ -131,13 +131,13 @@ export default function Dashboard() {
         </EmptyState>
       ) : (
         <div className="overflow-hidden rounded-lg border border-line bg-surface dark:bg-transparent">
-          <div className="hidden items-center gap-3 border-b border-line px-3 py-2 text-xs font-medium text-ink-soft md:flex">
+          <div className="hidden items-center gap-3 border-b border-line px-3 py-2 text-xs font-medium text-ink-soft sm:flex">
             <span className="w-4" />
             <span className="min-w-0 flex-1">名称 / Ping 地址</span>
-            <span className="w-32">计划</span>
-            <span className="w-32">下次到期</span>
-            <span className="w-28">最后 ping</span>
-            <span className="w-36 text-right">操作</span>
+            <span className="hidden w-24 shrink-0 sm:block">计划</span>
+            <span className="hidden w-24 shrink-0 sm:block">下次到期</span>
+            <span className="hidden w-20 shrink-0 sm:block">最后 ping</span>
+            <span className="w-32 text-right">操作</span>
           </div>
           {visible.map((c) => {
             const d = live.get(c.uuid);
@@ -147,7 +147,7 @@ export default function Dashboard() {
             return (
               <div
                 key={c.uuid}
-                className="flex flex-wrap items-center gap-3 border-b border-line px-3 py-2 last:border-b-0 md:flex-nowrap"
+                className="flex items-center gap-3 border-b border-line px-3 py-2 last:border-b-0"
               >
                 <span className="flex w-4 shrink-0 justify-center">
                   <StatusGlyph status={status} started={started} />
@@ -157,26 +157,29 @@ export default function Dashboard() {
                     <Link to={`/checks/${c.uuid}`} className="truncate font-medium hover:underline">
                       {c.name || c.uuid}
                     </Link>
-                    {c.tags
-                      .split(/\s+/)
-                      .filter(Boolean)
-                      .map((t) => (
-                        <span key={t} className="shrink-0 rounded bg-canvas px-1.5 py-0.5 text-[11px] text-ink-soft">
-                          {t}
-                        </span>
-                      ))}
+                    {/* 标签在窄屏让位给名称：详情与筛选都还能用 */}
+                    <span className="hidden shrink-0 items-center gap-1 sm:flex">
+                      {c.tags
+                        .split(/\s+/)
+                        .filter(Boolean)
+                        .map((t) => (
+                          <span key={t} className="rounded bg-canvas px-1.5 py-0.5 text-[11px] text-ink-soft">
+                            {t}
+                          </span>
+                        ))}
+                    </span>
                   </div>
                   <div className="truncate font-mono text-[11px] text-ink-soft">
                     {c.slug ? `/ping/${c.slug}` : `/ping/${c.uuid}`}
                   </div>
                 </div>
-                <span className="w-32 shrink-0 truncate text-xs text-ink-soft" title={plan(c)}>
+                <span className="hidden w-24 shrink-0 truncate text-xs text-ink-soft sm:block" title={plan(c)}>
                   {plan(c)}
                 </span>
-                <span className="w-32 shrink-0 text-xs" title={c.next_ping ?? ""}>
+                <span className="hidden w-24 shrink-0 truncate text-xs sm:block" title={c.next_ping ?? ""}>
                   {due}
                 </span>
-                <span className="w-28 shrink-0 text-xs text-ink-soft" title={fromNow(d?.last_ping ?? c.last_ping)}>
+                <span className="hidden w-20 shrink-0 truncate text-xs text-ink-soft sm:block" title={fromNow(d?.last_ping ?? c.last_ping)}>
                   {fromNow(d?.last_ping ?? c.last_ping)}
                 </span>
                 <div className="ml-auto flex shrink-0 items-center justify-end gap-1">

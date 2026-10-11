@@ -15,15 +15,15 @@ export function formatDateTime(value: string | null | undefined): string {
   return dayjs(value).format("YYYY-MM-DD HH:mm:ss");
 }
 
-// countdown renders the distance to a future instant as "1 小时 5 分钟后" or,
-// once it has passed, how long ago that was.
+// countdown is the "下次到期" cell. The column header already says what the
+// number means, so the value stays short enough to fit one line at narrow widths.
 export function countdown(value: string | null | undefined, now: number): string {
   if (!value) return "等待 ping";
   const target = dayjs(value).valueOf();
   const delta = target - now;
   // Use the caller's clock here too, so the whole cell can't disagree with itself.
-  if (delta <= 0) return `${humanDuration(-delta)}前到期`;
-  return `${humanDuration(delta)}后到期`;
+  if (delta <= 0) return `迟到 ${humanDuration(-delta)}`;
+  return `${humanDuration(delta)}后`;
 }
 
 // humanDuration speaks weeks, days, hours and minutes only — a leftover of
