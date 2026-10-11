@@ -1,0 +1,19 @@
+services:
+  feixi:
+    image: ghcr.io/felix2yu/feixi:latest
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      # 反向代理后面务必改成对外地址，否则页面上的 ping_url / 徽章地址是错的
+      FEIXI_SITE_ROOT: "http://localhost:8080"
+      FEIXI_DB: /data/feixi.db
+      # 通知默认允许打到内网地址；只想收公网通知就设成 false
+      FEIXI_ALLOW_PRIVATE_URLS: "true"
+      # 绑定挂载宿主目录时，容器内身份要和目录属主一致（SQLite WAL 要写目录本身）
+      PUID: "1000"
+      PGID: "1000"
+      TZ: Asia/Shanghai
+    volumes:
+      - ./data:/data
+    restart: unless-stopped

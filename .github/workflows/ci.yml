@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  release:
+    types: [published]
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    uses: Felix2yu/.github/.github/workflows/reusable-test.yml@v1
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    with:
+      # go.mod 在仓库根，前端在 internal/web
+      go-dir: .
+      web-dir: internal/web
+      # ./... 是安全的：internal/web/dist 里提交了一个占位 index.html，
+      # 没构建前端时 //go:embed all:dist 也能解析通过。
+      test-packages: ./...
+
+  image:
+    needs: test
+    permissions:
+      contents: read
+      packages: write
+    uses: Felix2yu/.github/.github/workflows/reusable-image.yml@v1
+    with:
+      go-dir: .
+      main-package: ./cmd/feixi
+      binary-name: feixi
+      image-name: ghcr.io/felix2yu/feixi
+      web-dir: internal/web
+      # 无需 frontend-stage-command：//go:embed 的目录就是 internal/web/dist，
+      # 前端构建产物天然落在被嵌入位置，静态资源已经进了二进制。
+
+  release:
+    if: github.event_name == 'release'
+    permissions:
+      contents: write
+    uses: Felix2yu/.github/.github/workflows/reusable-release.yml@v1
+    with:
+      go-dir: .
+      main-package: ./cmd/feixi
+      binary-name: feixi
+      web-dir: internal/web

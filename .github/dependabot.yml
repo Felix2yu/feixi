@@ -1,0 +1,85 @@
+# Felix2yu 组织统一依赖更新配置 —— 模板来自 Felix2yu/.github/preset/dependabot.yml
+#
+# 整份复制自 preset，只改了 npm 段的 directory（本仓前端在 internal/web）。
+# 升级时整份覆盖，不要在副本里手改 —— 否则下次同步会打架。
+# 设计理由与合并策略见 Felix2yu/.github/docs/dependabot.md
+
+version: 2
+updates:
+  # ── Go 后端（go.mod 在仓库根）───────────────────────────────────────
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "friday"
+      time: "00:00"
+      timezone: "Asia/Shanghai"
+    # 默认只有 5，达到上限后会「静默停止」提新 PR 且不报错；10 容纳分组后的峰值
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "build"
+      prefix-development: "chore"
+      include: "scope"
+    labels:
+      - "dependencies"
+    # patch / minor 合成一个 PR；major 单独成组（要读 changelog）
+    groups:
+      go-minor-patch:
+        patterns: ["*"]
+        update-types: ["patch", "minor"]
+      go-major:
+        patterns: ["*"]
+        update-types: ["major"]
+
+  # ── 前端 npm ───────────────────────────────────────────────────────
+  - package-ecosystem: "npm"
+    directory: "/internal/web"
+    schedule:
+      interval: "weekly"
+      day: "friday"
+      time: "00:00"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "build"
+      prefix-development: "chore"
+      include: "scope"
+    labels:
+      - "dependencies"
+    groups:
+      npm-minor-patch:
+        patterns: ["*"]
+        update-types: ["patch", "minor"]
+      npm-major:
+        patterns: ["*"]
+        update-types: ["major"]
+
+  # ── Docker 基础镜像 ─────────────────────────────────────────────────
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "friday"
+      time: "00:00"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "docker"
+
+  # ── GitHub Actions ──────────────────────────────────────────────────
+  # 注：Felix2yu/.github/.github/workflows/*.yml@v1 这种远程 reusable workflow 引用
+  # Dependabot 认不出来，得手动 version bump；这里管的是散落的第三方 action 版本。
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "friday"
+      time: "00:00"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore"
+    labels:
+      - "dependencies"
+      - "ci"

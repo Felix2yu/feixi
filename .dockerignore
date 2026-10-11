@@ -1,0 +1,27 @@
+# 构建镜像时忽略的内容。
+#
+# 只保留镜像真正要 COPY 的东西：CI 预编译好的二进制 + 入口脚本。
+# 注意：bin/ 不能被排除，否则 COPY bin/feixi 会报
+# 「file not found in build context or excluded by .dockerignore」。
+
+.git
+.github
+.gitignore
+.nvmrc
+LICENSE
+README.md
+Makefile
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# 前端源码与产物：产物已经 go:embed 进二进制，源码不进镜像
+internal/web/
+
+# 本地数据与数据库文件，绝不能进镜像层
+data/
+*.db
+*.db-wal
+*.db-shm
+**/.DS_Store
+**/*.log
