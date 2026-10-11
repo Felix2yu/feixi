@@ -21,6 +21,12 @@ const (
 	StatusPaused Status = "paused"
 )
 
+// The flap statuses only appear as notification rows, never as check status.
+const (
+	StatusFlap   Status = "flap"
+	StatusStable Status = "stable"
+)
+
 // Display is a status as shown in the UI and badges.
 type Display string
 
@@ -97,6 +103,18 @@ type Check struct {
 	StartKW           string
 	SuccessKW         string
 	FailureKW         string
+
+	// FailTolerance is how many consecutive failure signals are absorbed
+	// before the check flips down. Missed deadlines (timeout) still flip
+	// immediately after grace. FailCount is the running consecutive total,
+	// reset by any success signal.
+	FailTolerance int
+	FailCount     int
+
+	// Flapping marks a check inside the alert-suppression window; FlapSince
+	// is when it entered that state.
+	Flapping  bool
+	FlapSince *time.Time
 }
 
 func (c *Check) NameThenCode() string {

@@ -302,3 +302,91 @@ func TestMarkDown(t *testing.T) {
 		t.Error("marking a down check down again produced a flip")
 	}
 }
+
+func TestFailTolerance(t *testing.T) {
+	sch := &scripted{}
+
+	t.Run("tolerated failures keep the check up and accumulate", func(t *testing.T) {
+		c := newCheck()
+		c.FailTolerance = 2
+		if _, err := ApplyPing(c, ActionSuccess, t0, nil, sch); err != nil {
+			t.Fatal(err)
+		}
+		f1, err := ApplyPing(c, ActionFail, t0.Add(time.Minute), nil, sch)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if f1 != nil || c.Status != StatusUp || c.FailCount != 1 {
+			t.Fatalf("first tolerated fail: flip=%v status=%q count=%d", f1, c.Status, c.FailCount)
+		}
+		f2, err := ApplyPing(c, ActionFail, t0.Add(2*time.Minute), nil, sch)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if f2 != nil || c.Status != StatusUp || c.FailCount != 2 {
+			t.Fatalf("second tolerated fail: flip=%v status=%q count=%d", f2, c.Status, c.FailCount)
+		}
+	})
+
+	t.Run("the failure past tolerance flips down with reason fail", func(t *testing.T) {
+		c := newCheck()
+		c.FailTolerance = 1
+		if _, err := ApplyPing(c, ActionSuccess, t0, nil, sch); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := ApplyPing(c, ActionFail, t0.Add(time.Minute), nil, sch); err != nil {
+			t.Fatal(err)
+		}
+		flip, err := ApplyPing(c, ActionFail, t0.Add(2*time.Minute), nil, sch)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if c.Status != StatusDown || c.FailCount != 2 {
+			t.Fatalf("status=%q count=%d", c.Status, c.FailCount)
+		}
+		if flip == nil || flip.Reason != ReasonFail || flip.NewStatus != StatusDown {
+			t.Fatalf("flip = %+v", flip)
+		}
+	})
+
+	t.Run("a success resets the consecutive failure count", func(t *testing.T) {
+		c := newCheck()
+		c.FailTolerance = 1
+		if _, err := ApplyPing(c, ActionSuccess, t0, nil, sch); err != nil {
+			t.Fatal(err)
+		}
+		// fail, success (count back to 0), fail: still within tolerance.
+		if _, err := ApplyPing(c, ActionFail, t0.Add(time.Minute), nil, sch); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := ApplyPing(c, ActionSuccess, t0.Add(2*time.Minute), nil, sch); err != nil {
+			t.Fatal(err)
+		}
+		flip, err := ApplyPing(c, ActionFail, t0.Add(3*time.Minute), nil, sch)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if flip != nil || c.Status != StatusUp || c.FailCount != 1 {
+			t.Fatalf("flip=%v status=%q count=%d", flip, c.Status, c.FailCount)
+		}
+	})
+
+	t.Run("pause and resume clear the failure count", func(t *testing.T) {
+		c := newCheck()
+		c.FailTolerance = 2
+		if _, err := ApplyPing(c, ActionSuccess, t0, nil, sch); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := ApplyPing(c, ActionFail, t0.Add(time.Minute), nil, sch); err != nil {
+			t.Fatal(err)
+		}
+		Pause(c, t0.Add(2*time.Minute))
+		if c.FailCount != 0 {
+			t.Errorf("pause left fail count = %d", c.FailCount)
+		}
+		Resume(c, t0.Add(3*time.Minute))
+		if c.FailCount != 0 {
+			t.Errorf("resume left fail count = %d", c.FailCount)
+		}
+	})
+}

@@ -50,11 +50,18 @@ func ApplyPing(c *Check, action Action, now time.Time, rid *string, sch Schedule
 
 		newStatus := StatusUp
 		if action == ActionFail {
-			newStatus = StatusDown
+			c.FailCount++
+			// Up to FailTolerance consecutive failure signals are absorbed:
+			// the check stays up and no alert goes out. The next one flips.
+			if c.FailCount > c.FailTolerance {
+				newStatus = StatusDown
+			}
+		} else {
+			c.FailCount = 0
 		}
 		if c.Status != newStatus {
 			reason := ReasonNone
-			if action == ActionFail {
+			if action == ActionFail && newStatus == StatusDown {
 				reason = ReasonFail
 			}
 			flip = &Flip{CheckID: c.ID, Created: now, OldStatus: c.Status, NewStatus: newStatus, Reason: reason}
@@ -93,6 +100,9 @@ func Pause(c *Check, now time.Time) *Flip {
 	c.LastStart = nil
 	c.LastStartRid = nil
 	c.AlertAfter = nil
+	c.FailCount = 0
+	c.Flapping = false
+	c.FlapSince = nil
 	return flip
 }
 
@@ -115,6 +125,9 @@ func Resume(c *Check, now time.Time) *Flip {
 	c.LastPing = nil
 	c.LastDuration = nil
 	c.AlertAfter = nil
+	c.FailCount = 0
+	c.Flapping = false
+	c.FlapSince = nil
 	return flip
 }
 
