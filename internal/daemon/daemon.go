@@ -14,6 +14,10 @@ import (
 // Notifier delivers one flip to its channels.
 type Notifier interface {
 	Process(ctx context.Context, flip *store.PendingFlip) error
+	// Nag re-sends a down alert for a check that has stayed down.
+	Nag(ctx context.Context, cand store.NagCandidate) error
+	// SettleFlaps closes a flapping episode once the check has stayed quiet.
+	SettleFlaps(ctx context.Context, settles []store.FlapSettle) error
 }
 
 type Daemon struct {
@@ -38,6 +42,10 @@ func New(db *store.DB, cfg *config.Config, log *slog.Logger) *Daemon {
 type noopNotifier struct{}
 
 func (noopNotifier) Process(context.Context, *store.PendingFlip) error { return nil }
+func (noopNotifier) Nag(context.Context, store.NagCandidate) error     { return nil }
+func (noopNotifier) SettleFlaps(context.Context, []store.FlapSettle) error {
+	return nil
+}
 
 // QueuePrune asks for trimming without making the ping request wait for it.
 func (d *Daemon) QueuePrune(checkID int64) {
@@ -51,6 +59,8 @@ func (d *Daemon) QueuePrune(checkID int64) {
 func (d *Daemon) Run(ctx context.Context) {
 	go d.scanGoingDown(ctx)
 	go d.drainFlips(ctx)
+	go d.nagLoop(ctx)
+	go d.flapLoop(ctx)
 	go d.pruneLoop(ctx)
 }
 
@@ -120,6 +130,79 @@ func (d *Daemon) drainFlips(ctx context.Context) {
 			}
 			dlog.Info("通知已处理")
 		}(flip)
+	}
+}
+
+// nagLoop periodically re-alerts channels that opted into reminders while a
+// check remains down. Sweeps run sequentially: the delivery record itself is
+// the dedupe key, so overlapping ticks would only add duplicate sends.
+func (d *Daemon) nagLoop(ctx context.Context) {
+	if d.Cfg.NagPeriod <= 0 {
+		return
+	}
+	ticker := time.NewTicker(d.Cfg.NagScanInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			d.sweepNags(ctx)
+		}
+	}
+}
+
+func (d *Daemon) sweepNags(ctx context.Context) {
+	candidates, err := d.DB.NagDue(ctx, d.Cfg.NagPeriod, time.Now().UTC())
+	if err != nil {
+		d.Log.Warn("查找催促任务失败", "err", err)
+		return
+	}
+	for _, cand := range candidates {
+		if ctx.Err() != nil {
+			return
+		}
+		if err := d.Notifier.Nag(ctx, cand); err != nil {
+			d.Log.Warn("催促通知发送失败", "check", cand.Check.ID,
+				"channel", cand.Channel.Name, "err", err)
+		} else {
+			d.Log.Info("已发送催促通知", "check", cand.Check.ID, "channel", cand.Channel.Name)
+		}
+	}
+}
+
+// flapLoop settles flapping episodes once their check has stayed in one
+// state for a full window. Settling is batched so one notify call may close
+// several checks at once.
+func (d *Daemon) flapLoop(ctx context.Context) {
+	if d.Cfg.FlapThreshold <= 0 {
+		return
+	}
+	ticker := time.NewTicker(d.Cfg.FlapScanInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			d.sweepFlaps(ctx)
+		}
+	}
+}
+
+func (d *Daemon) sweepFlaps(ctx context.Context) {
+	settles, err := d.DB.FlappingDue(ctx, time.Now().UTC(), d.Cfg.FlapWindow)
+	if err != nil {
+		d.Log.Warn("查找抖动结算失败", "err", err)
+		return
+	}
+	if len(settles) == 0 {
+		return
+	}
+	if err := d.Notifier.SettleFlaps(ctx, settles); err != nil {
+		d.Log.Warn("抖动结算通知发送失败", "err", err)
 	}
 }
 
