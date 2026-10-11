@@ -513,3 +513,41 @@ func TestPingRejections(t *testing.T) {
 		resp.Body.Close()
 	}
 }
+
+// TestSuccessSuffixIsAliasOfBareURL pins that /success behaves exactly like the
+// bare ping URL, including the recorded ping type.
+func TestSuccessSuffixIsAliasOfBareURL(t *testing.T) {
+	ts := newTestServer(t)
+	_, a := createCheck(t, ts, map[string]any{"name": "bare", "timeout": 3600, "grace": 60})
+	_, b := createCheck(t, ts, map[string]any{"name": "explicit", "timeout": 3600, "grace": 60})
+
+	for _, u := range []string{"/ping/" + a, "/ping/" + b + "/success"} {
+		if resp := ts.do(t, "GET", u, ""); resp.StatusCode != http.StatusOK {
+			t.Fatalf("%s = %d, want 200", u, resp.StatusCode)
+		}
+	}
+
+	docs := decode(t, ts.do(t, "GET", "/api/v3/checks/"+a, ""))
+	docE := decode(t, ts.do(t, "GET", "/api/v3/checks/"+b, ""))
+	if docs["status"] != "up" || docE["status"] != "up" {
+		t.Errorf("statuses = %v / %v, want both up", docs["status"], docE["status"])
+	}
+
+	for _, uuid := range []string{a, b} {
+		pings := decode(t, ts.do(t, "GET", "/api/v3/checks/"+uuid+"/pings/", ""))["pings"].([]any)
+		if len(pings) != 1 {
+			t.Fatalf("%s pings = %d", uuid, len(pings))
+		}
+		if typ := pings[0].(map[string]any)["type"]; typ != "success" {
+			t.Errorf("%s recorded type = %v, want success", uuid, typ)
+		}
+	}
+
+	// /success on a down check recovers it, same as the bare URL.
+	ts.do(t, "GET", "/ping/"+b+"/fail", "").Body.Close()
+	ts.do(t, "GET", "/ping/"+b+"/success", "").Body.Close()
+	doc := decode(t, ts.do(t, "GET", "/api/v3/checks/"+b, ""))
+	if doc["status"] != "up" {
+		t.Errorf("after fail then /success: status = %v, want up", doc["status"])
+	}
+}

@@ -24,11 +24,14 @@ type Handler struct {
 	OnPrune func(checkID int64)
 }
 
+// "success" is an explicit alias of the bare URL, so a script can name the
+// signal it sends instead of relying on the empty suffix.
 var actions = map[string]engine.Action{
-	"start": engine.ActionStart,
-	"fail":  engine.ActionFail,
-	"log":   engine.ActionLog,
-	"ign":   engine.ActionIgn,
+	"success": engine.ActionSuccess,
+	"start":   engine.ActionStart,
+	"fail":    engine.ActionFail,
+	"log":     engine.ActionLog,
+	"ign":     engine.ActionIgn,
 }
 
 // Root dispatches /ping/{first}[/{second}[/{third}]].

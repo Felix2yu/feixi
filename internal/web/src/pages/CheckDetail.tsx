@@ -15,6 +15,7 @@ const localZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 // 地址后缀就是信号本身，所以直接列出可复制的完整地址，比写 &lt;exitstatus&gt; 这种占位符清楚。
 const SIGNALS: Array<{ suffix: string; meaning: string }> = [
   { suffix: "", meaning: "成功：任务按时跑完" },
+  { suffix: "/success", meaning: "成功：与不接后缀等价" },
   { suffix: "/start", meaning: "开始运行，配合 ?rid= 可算出运行时长" },
   { suffix: "/log", meaning: "记一条日志，不改变状态" },
   { suffix: "/fail", meaning: "失败" },

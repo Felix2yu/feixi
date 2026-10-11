@@ -43,9 +43,10 @@ make web && make run               # 前端产物 go:embed 进二进制，只有
 打开 `http://localhost:8080` 新建检查项，然后按页面上给的地址发信号：
 
 ```bash
-curl http://localhost:8080/ping/<uuid>              # 成功
+curl http://localhost:8080/ping/<uuid>              # 成功（等价于 /success）
 curl http://localhost:8080/ping/<uuid>/start        # 开始运行
 curl http://localhost:8080/ping/<uuid>/log          # 中间日志，不改状态
+curl http://localhost:8080/ping/<uuid>/success      # 成功（显式写法）
 curl http://localhost:8080/ping/<uuid>/fail         # 失败
 curl http://localhost:8080/ping/<uuid>/3            # 退出码 3 ⇒ 失败
 curl "http://localhost:8080/ping/<uuid>?rid=<uuid>" # 用同一个 rid 配对，算出运行时长
