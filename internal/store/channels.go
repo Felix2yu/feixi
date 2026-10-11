@@ -256,7 +256,7 @@ func (db *DB) SetNotificationError(ctx context.Context, code, errText string, ma
 			created           int64
 		)
 		err := tx.QueryRowContext(ctx,
-			`SELECT n.id, n.owner_id, n.channel_id, n.check_status, n.created, c.name
+			`SELECT n.id, n.owner_id, n.channel_id, n.check_status, n.created, COALESCE(c.name, '')
 			   FROM notifications n LEFT JOIN checks c ON c.id = n.owner_id
 			  WHERE n.code = ?`, code).
 			Scan(&id, &ownerID, &channelID, &status, &created, &checkName)
