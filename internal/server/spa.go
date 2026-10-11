@@ -1,6 +1,9 @@
 package server
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"io/fs"
 	"net/http"
 	"path"
@@ -55,9 +58,23 @@ func serveStatic(w http.ResponseWriter, req *http.Request, files fs.FS) {
 	} else {
 		w.Header().Set("Cache-Control", "no-cache")
 	}
+	if name == "sw.js" {
+		// 浏览器只在脚本字节变化时装新 SW，而发版改的是 hashed 产物、不是这个文件本身。
+		// 用入口 HTML 的指纹顶掉占位符，脚本就跟着本次构建变，旧缓存才会在 activate 时被清掉。
+		if shell, err := fs.ReadFile(files, "index.html"); err == nil {
+			body = bytes.ReplaceAll(body, []byte("__BUILD_VERSION__"), []byte(buildFingerprint(shell)))
+		}
+	}
 	w.Header().Set("Content-Type", contentType(name))
 	w.WriteHeader(http.StatusOK)
 	w.Write(body)
+}
+
+// buildFingerprint 是本次前端构建的身份：入口 HTML 里引用着 hashed 产物名，
+// 所以它变了就意味着该换一份 Service Worker 缓存。
+func buildFingerprint(shell []byte) string {
+	sum := sha256.Sum256(shell)
+	return hex.EncodeToString(sum[:])[:12]
 }
 
 func contentType(name string) string {

@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"sort"
 	"strings"
 	"testing"
@@ -534,6 +535,44 @@ func TestServeStaticAssetRules(t *testing.T) {
 		if tt.body != "" && !strings.Contains(rec.Body.String(), tt.body) {
 			t.Errorf("%s body = %q, want it to contain %q", tt.path, rec.Body.String(), tt.body)
 		}
+	}
+}
+
+// TestServeStaticSWVersionStamped 盯住发版链路：浏览器只在 sw.js 字节变化时装新 SW，
+// 而发版改的是 hashed 产物、不是 sw.js 本身，所以指纹必须由入口 HTML 决定。
+func TestServeStaticSWVersionStamped(t *testing.T) {
+	mk := func(shell string) fstest.MapFS {
+		return fstest.MapFS{
+			"index.html": {Data: []byte(shell)},
+			"sw.js":      {Data: []byte("const CACHE = 'feixi-' + '__BUILD_VERSION__';")},
+		}
+	}
+	stamp := func(files fs.FS) string {
+		rec := httptest.NewRecorder()
+		serveStatic(rec, httptest.NewRequest("GET", "/sw.js", nil), files)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("sw.js = %d", rec.Code)
+		}
+		if ct := rec.Header().Get("Content-Type"); ct != "text/javascript; charset=utf-8" {
+			t.Errorf("sw.js content-type = %q", ct)
+		}
+		body := rec.Body.String()
+		if strings.Contains(body, "__BUILD_VERSION__") {
+			t.Fatalf("占位符没被替换：%s", body)
+		}
+		m := regexp.MustCompile(`'([0-9a-f]{12})'`).FindStringSubmatch(body)
+		if m == nil {
+			t.Fatalf("没注入 12 位指纹：%s", body)
+		}
+		return m[1]
+	}
+
+	first := stamp(mk("<!doctype html>本次构建甲"))
+	if again := stamp(mk("<!doctype html>本次构建甲")); again != first {
+		t.Errorf("同一份入口 HTML 的指纹不稳定：%s vs %s", first, again)
+	}
+	if second := stamp(mk("<!doctype html>下次构建乙")); second == first {
+		t.Errorf("入口 HTML 变了而指纹没变：%s", first)
 	}
 }
 
