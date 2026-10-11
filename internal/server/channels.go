@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -20,6 +21,11 @@ type Tester interface {
 	TestMessage(ch *store.Channel, c *engine.Check, status engine.Status) error
 }
 
+// Resender re-delivers one past notification. The notify worker satisfies it.
+type Resender interface {
+	RetryNotification(ctx context.Context, n *store.Notification) error
+}
+
 type channelDict struct {
 	Code               string   `json:"code"`
 	Name               string   `json:"name"`
@@ -27,6 +33,7 @@ type channelDict struct {
 	URLs               []string `json:"urls"`
 	Up                 bool     `json:"up"`
 	Down               bool     `json:"down"`
+	Nag                bool     `json:"nag"`
 	Disabled           bool     `json:"disabled"`
 	LastNotify         *string  `json:"last_notify"`
 	LastNotifyDuration *int     `json:"last_notify_duration"`
@@ -41,6 +48,7 @@ func toChannelDict(ch *store.Channel) channelDict {
 		URLs:      ch.URLs,
 		Up:        ch.Conf.Up,
 		Down:      ch.Conf.Down,
+		Nag:       ch.Conf.Nag,
 		Disabled:  ch.Disabled,
 		LastError: ch.LastError,
 	}
@@ -93,6 +101,7 @@ type channelBody struct {
 	URLs     []string `json:"urls"`
 	Up       *bool    `json:"up"`
 	Down     *bool    `json:"down"`
+	Nag      *bool    `json:"nag"`
 	Disabled *bool    `json:"disabled"`
 }
 
@@ -154,6 +163,9 @@ func (h *frontHandler) createChannel(w http.ResponseWriter, r *http.Request) {
 	if b.Down != nil {
 		conf.Down = *b.Down
 	}
+	if b.Nag != nil {
+		conf.Nag = *b.Nag
+	}
 
 	ch, err := h.db.CreateChannel(r.Context(), &store.NewChannel{
 		ProjectID: project.ID,
@@ -211,6 +223,9 @@ func (h *frontHandler) updateChannel(w http.ResponseWriter, r *http.Request) {
 	}
 	if b.Down != nil {
 		ch.Conf.Down = *b.Down
+	}
+	if b.Nag != nil {
+		ch.Conf.Nag = *b.Nag
 	}
 	if b.Disabled != nil {
 		ch.Disabled = *b.Disabled

@@ -56,7 +56,7 @@ func newTestServer(t *testing.T) *testServer {
 	}
 
 	d := daemon.New(db, cfg, slog.Default())
-	srv := New(cfg, db, d, []string{"json", "mailto"}, nil)
+	srv := New(cfg, db, d, []string{"json", "mailto"}, nil, nil)
 	return &testServer{handler: srv.Router, db: db, cfg: cfg, projectID: project.ID}
 }
 
@@ -371,8 +371,15 @@ func TestFlipsEndpoint(t *testing.T) {
 		t.Fatalf("flips = %d, want 2", len(flips))
 	}
 	// Newest first, matching order_by("-id").
-	if flips[0].(map[string]any)["up"].(float64) != 0 {
+	newest := flips[0].(map[string]any)
+	if newest["up"].(float64) != 0 {
 		t.Errorf("newest flip should be the down transition")
+	}
+	if newest["new_status"] != "down" || newest["old_status"] != "up" {
+		t.Errorf("flip statuses = %v -> %v, want up -> down", newest["old_status"], newest["new_status"])
+	}
+	if newest["reason"] != "fail" {
+		t.Errorf("down flip reason = %v, want fail", newest["reason"])
 	}
 
 	// A window that starts in the future is empty.
@@ -549,5 +556,57 @@ func TestSuccessSuffixIsAliasOfBareURL(t *testing.T) {
 	doc := decode(t, ts.do(t, "GET", "/api/v3/checks/"+b, ""))
 	if doc["status"] != "up" {
 		t.Errorf("after fail then /success: status = %v, want up", doc["status"])
+	}
+}
+
+func TestFailureTolerance(t *testing.T) {
+	ts := newTestServer(t)
+	doc, code := createCheck(t, ts, map[string]any{
+		"name": "容忍失败", "timeout": 3600, "grace": 60, "failure_tolerance": 2,
+	})
+	if doc["failure_tolerance"] != float64(2) {
+		t.Fatalf("create echoes tolerance = %v", doc["failure_tolerance"])
+	}
+
+	// Two consecutive failure signals are absorbed; the check stays up and
+	// the running count is exposed while nonzero.
+	ts.do(t, "GET", "/ping/"+code+"/fail", "").Body.Close()
+	ts.do(t, "GET", "/ping/"+code+"/fail", "").Body.Close()
+	doc = decode(t, ts.do(t, "GET", "/api/v3/checks/"+code, ""))
+	if doc["status"] != "up" {
+		t.Fatalf("status after 2 fails = %v, want up", doc["status"])
+	}
+	if doc["failure_count"] != float64(2) {
+		t.Fatalf("failure_count = %v, want 2", doc["failure_count"])
+	}
+
+	// The third failure flips the check down.
+	ts.do(t, "GET", "/ping/"+code+"/fail", "").Body.Close()
+	doc = decode(t, ts.do(t, "GET", "/api/v3/checks/"+code, ""))
+	if doc["status"] != "down" {
+		t.Fatalf("status after 3 fails = %v, want down", doc["status"])
+	}
+
+	// Updating the tolerance round-trips; out-of-range values are rejected.
+	resp := ts.do(t, "POST", "/api/v3/checks/"+code, map[string]any{"failure_tolerance": 5})
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("update = %d %s", resp.StatusCode, body)
+	}
+	resp.Body.Close()
+	if resp := ts.do(t, "POST", "/api/v3/checks/"+code, map[string]any{"failure_tolerance": 999}); resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("tolerance 999 = %d, want 400", resp.StatusCode)
+		resp.Body.Close()
+	}
+}
+
+func TestMetaFlapSettings(t *testing.T) {
+	ts := newTestServer(t)
+	doc := decode(t, ts.do(t, "GET", "/front/meta", ""))
+	if doc["flap_threshold"] != float64(ts.cfg.FlapThreshold) {
+		t.Errorf("flap_threshold = %v", doc["flap_threshold"])
+	}
+	if doc["flap_window_seconds"] != float64(int(ts.cfg.FlapWindow.Seconds())) {
+		t.Errorf("flap_window_seconds = %v", doc["flap_window_seconds"])
 	}
 }

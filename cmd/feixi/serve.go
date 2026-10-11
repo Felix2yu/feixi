@@ -55,7 +55,7 @@ func serve(ctx context.Context, log *slog.Logger) error {
 	d.Notifier = notifier
 	d.Run(ctx)
 
-	srv := server.New(cfg, db, d, apprise.SupportedSchemas(), notifier)
+	srv := server.New(cfg, db, d, apprise.SupportedSchemas(), notifier, notifier)
 	httpSrv := &http.Server{
 		Addr:              cfg.Listen,
 		Handler:           srv.Router,

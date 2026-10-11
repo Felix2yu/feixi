@@ -101,6 +101,7 @@ type spec struct {
 	FilterDefaultFail *bool     `json:"filter_default_fail"`
 	FilterSubject     *bool     `json:"filter_subject"`
 	FilterBody        *bool     `json:"filter_body"`
+	FailureTolerance  *int      `json:"failure_tolerance"`
 }
 
 var slugPattern = regexp.MustCompile(`^[a-z0-9/_-]*$`)
@@ -200,6 +201,9 @@ func (s *spec) validate() error {
 	}
 	if s.Methods != nil && *s.Methods != "" && *s.Methods != "POST" {
 		return errors.New("JSON 验证错误：字段 \"methods\" 只能是 \"\" 或 \"POST\"")
+	}
+	if s.FailureTolerance != nil && (*s.FailureTolerance < 0 || *s.FailureTolerance > 100) {
+		return errors.New("JSON 验证错误：字段 \"failure_tolerance\" 需要在 0 到 100 之间")
 	}
 	if s.FilterSubject != nil && *s.FilterSubject {
 		return errors.New("JSON 验证错误：filter_subject 需要邮件通道，本版本不支持")
@@ -327,6 +331,10 @@ func (h *apiHandler) applySpec(ctx context.Context, c *engine.Check, s *spec, v 
 	if s.FilterDefaultFail != nil {
 		c.FilterDefaultFail = *s.FilterDefaultFail
 		changed["filter_default_fail"] = true
+	}
+	if s.FailureTolerance != nil {
+		c.FailTolerance = *s.FailureTolerance
+		changed["fail_tolerance"] = true
 	}
 
 	// A schedule needs a timezone to be evaluated; default it like the original.
@@ -554,6 +562,10 @@ func (h *apiHandler) createCheck(w http.ResponseWriter, r *http.Request, v int) 
 	if s.Methods != nil {
 		methods = *s.Methods
 	}
+	failTolerance := 0
+	if s.FailureTolerance != nil {
+		failTolerance = *s.FailureTolerance
+	}
 	str := func(p *string) string {
 		if p == nil {
 			return ""
@@ -566,24 +578,25 @@ func (h *apiHandler) createCheck(w http.ResponseWriter, r *http.Request, v int) 
 	}
 
 	c, err := h.db.CreateCheck(r.Context(), &store.NewCheck{
-		ProjectID:   project.ID,
-		Name:        str(s.Name),
-		Slug:        str(s.Slug),
-		Tags:        tags,
-		Desc:        str(s.Desc),
-		Kind:        kind,
-		Timeout:     timeout,
-		Grace:       grace,
-		Schedule:    schedule,
-		TZ:          tz,
-		Methods:     methods,
-		ManualResum: manual,
-		FilterHTTP:  filterHTTP,
-		FilterFail:  filterFail,
-		StartKW:     str(s.StartKW),
-		SuccessKW:   firstNonEmpty(str(s.SuccessKW), str(s.Subject)),
-		FailureKW:   firstNonEmpty(str(s.FailureKW), str(s.SubjectFail)),
-		ChannelIDs:  channelIDs,
+		ProjectID:     project.ID,
+		Name:          str(s.Name),
+		Slug:          str(s.Slug),
+		Tags:          tags,
+		Desc:          str(s.Desc),
+		Kind:          kind,
+		Timeout:       timeout,
+		Grace:         grace,
+		Schedule:      schedule,
+		TZ:            tz,
+		Methods:       methods,
+		ManualResum:   manual,
+		FilterHTTP:    filterHTTP,
+		FilterFail:    filterFail,
+		StartKW:       str(s.StartKW),
+		SuccessKW:     firstNonEmpty(str(s.SuccessKW), str(s.Subject)),
+		FailureKW:     firstNonEmpty(str(s.FailureKW), str(s.SubjectFail)),
+		FailTolerance: failTolerance,
+		ChannelIDs:    channelIDs,
 	})
 	if err != nil {
 		if errors.Is(err, store.ErrTooManyChecks) {
@@ -826,6 +839,7 @@ type pingDict struct {
 	Rid        *string  `json:"rid"`
 	BodyURL    *string  `json:"body_url"`
 	Duration   *float64 `json:"duration,omitempty"`
+	ExitStatus *int64   `json:"exit_status,omitempty"`
 }
 
 func (h *apiHandler) pings(w http.ResponseWriter, r *http.Request, v int) {
@@ -854,6 +868,7 @@ func (h *apiHandler) pings(w http.ResponseWriter, r *http.Request, v int) {
 			Method:     p.Method,
 			UA:         p.UA,
 			Rid:        p.Rid,
+			ExitStatus: p.ExitStatus,
 		}
 		if d.Type == "" {
 			d.Type = "success"
@@ -939,10 +954,16 @@ func (h *apiHandler) flips(w http.ResponseWriter, r *http.Request) {
 		if events[i].Up {
 			up = 1
 		}
-		out = append(out, map[string]any{
-			"timestamp": format.ISOString(&events[i].Timestamp),
-			"up":        up,
-		})
+		row := map[string]any{
+			"timestamp":  format.ISOString(&events[i].Timestamp),
+			"up":         up,
+			"old_status": string(events[i].OldStatus),
+			"new_status": string(events[i].NewStatus),
+		}
+		if events[i].Reason != engine.ReasonNone {
+			row["reason"] = string(events[i].Reason)
+		}
+		out = append(out, row)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"flips": out})
 }

@@ -30,10 +30,11 @@ func isoTime(t *time.Time) *string {
 
 // mountFront registers the polling endpoint the dashboard refreshes against and
 // the SPA itself.
-func mountFront(r chi.Router, db *store.DB, cfg *config.Config, schemas []string, tester Tester) {
-	h := &frontHandler{db: db, cfg: cfg, schemas: schemas, tester: tester}
+func mountFront(r chi.Router, db *store.DB, cfg *config.Config, schemas []string, tester Tester, resender Resender) {
+	h := &frontHandler{db: db, cfg: cfg, schemas: schemas, tester: tester, resender: resender}
 	r.Route("/front", func(r chi.Router) {
 		r.Get("/status", h.status)
+		r.Get("/status-page/{key}", h.statusPage)
 		r.Get("/meta", h.meta)
 		h.mountChannels(r)
 		h.mountStats(r)
@@ -41,10 +42,11 @@ func mountFront(r chi.Router, db *store.DB, cfg *config.Config, schemas []string
 }
 
 type frontHandler struct {
-	db      *store.DB
-	cfg     *config.Config
-	schemas []string
-	tester  Tester
+	db       *store.DB
+	cfg      *config.Config
+	schemas  []string
+	tester   Tester
+	resender Resender
 }
 
 func sha256sum(b []byte) []byte {
@@ -149,10 +151,13 @@ func (h *frontHandler) meta(w http.ResponseWriter, r *http.Request) {
 	schemas := append([]string{}, h.schemas...)
 	sort.Strings(schemas)
 	writeJSON(w, http.StatusOK, map[string]any{
-		"ping_body_limit": h.cfg.PingBodyLimit,
-		"max_checks":      h.cfg.MaxChecks,
-		"site_root":       h.cfg.SiteRoot,
-		"apprise_schemas": schemas,
+		"ping_body_limit":     h.cfg.PingBodyLimit,
+		"max_checks":          h.cfg.MaxChecks,
+		"site_root":           h.cfg.SiteRoot,
+		"apprise_schemas":     schemas,
+		"nag_period_seconds":  int(h.cfg.NagPeriod.Seconds()),
+		"flap_window_seconds": int(h.cfg.FlapWindow.Seconds()),
+		"flap_threshold":      h.cfg.FlapThreshold,
 	})
 }
 

@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"time"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/yufei/feixi/internal/cronex"
 	"github.com/yufei/feixi/internal/engine"
+	"github.com/yufei/feixi/internal/store"
 	"github.com/yufei/feixi/internal/tzutil"
 )
 
@@ -17,7 +19,10 @@ import (
 func (h *frontHandler) mountStats(r chi.Router) {
 	r.Get("/project", h.project)
 	r.Get("/checks/{code}/downtimes", h.downtimes)
+	r.Get("/checks/{code}/events", h.events)
+	r.Get("/checks/{code}/status", h.checkStatusText)
 	r.Get("/notifications", h.notifications)
+	r.Post("/notifications/{code}/retry", h.retryNotification)
 	r.Post("/schedule/preview", h.schedulePreview)
 }
 
@@ -142,6 +147,28 @@ func (h *frontHandler) notifications(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"notifications": out})
+}
+
+// retryNotification re-sends one past alert through its original channel.
+func (h *frontHandler) retryNotification(w http.ResponseWriter, r *http.Request) {
+	if h.resender == nil {
+		jsonError(w, http.StatusServiceUnavailable, "通知器未就绪")
+		return
+	}
+	n, err := h.db.NotificationByCode(r.Context(), chi.URLParam(r, "code"))
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			jsonError(w, http.StatusNotFound, "未找到")
+		} else {
+			jsonError(w, http.StatusInternalServerError, "服务器错误")
+		}
+		return
+	}
+	if err := h.resender.RetryNotification(r.Context(), n); err != nil {
+		jsonError(w, http.StatusBadGateway, errTextForUI(err))
+		return
+	}
+	writeText(w, http.StatusOK, "OK")
 }
 
 // schedulePreview powers the cron builder: it echoes the next occurrences so the

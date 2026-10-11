@@ -33,6 +33,9 @@ type CheckDict struct {
 	FilterBody        bool    `json:"filter_body"`
 	FilterHTTPBody    bool    `json:"filter_http_body"`
 	FilterDefaultFail bool    `json:"filter_default_fail"`
+	FailureTolerance  int     `json:"failure_tolerance"`
+	FailureCount      int     `json:"failure_count,omitempty"`
+	Flapping          bool    `json:"flapping,omitempty"`
 	BadgeURL          string  `json:"badge_url"`
 
 	UUID      string `json:"uuid"`
@@ -81,6 +84,9 @@ func (h *apiHandler) checkDict(ctx context.Context, c *engine.Check, version int
 		FailureKW:         c.FailureKW,
 		FilterHTTPBody:    c.FilterHTTPBody,
 		FilterDefaultFail: c.FilterDefaultFail,
+		FailureTolerance:  c.FailTolerance,
+		FailureCount:      c.FailCount,
+		Flapping:          c.Flapping,
 		BadgeURL:          h.cfg.SiteRoot + "/b/2/" + c.BadgeKey + ".svg",
 		UUID:              c.Code,
 		PingURL:           h.cfg.SiteRoot + "/ping/" + c.Code,

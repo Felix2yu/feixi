@@ -21,7 +21,7 @@ type Server struct {
 	Cfg    *config.Config
 }
 
-func New(cfg *config.Config, db *store.DB, d *daemon.Daemon, schemas []string, tester Tester) *Server {
+func New(cfg *config.Config, db *store.DB, d *daemon.Daemon, schemas []string, tester Tester, resender Resender) *Server {
 	r := chi.NewRouter()
 	r.Use(chimw.Recoverer)
 	r.Use(requestLog)
@@ -49,7 +49,7 @@ func New(cfg *config.Config, db *store.DB, d *daemon.Daemon, schemas []string, t
 		})
 	}
 
-	mountFront(r, db, cfg, schemas, tester)
+	mountFront(r, db, cfg, schemas, tester, resender)
 	mountSPA(r)
 	return &Server{Router: r, DB: db, Cfg: cfg}
 }
