@@ -15,15 +15,31 @@ import (
 	"github.com/yufei/feixi/internal/tzutil"
 )
 
-// mountStats adds the read-only endpoints the dashboard and detail pages use.
+// mountStats adds the detail-page reads plus the few mutations the dashboard
+// offers on a single check.
 func (h *frontHandler) mountStats(r chi.Router) {
 	r.Get("/project", h.project)
 	r.Get("/checks/{code}/downtimes", h.downtimes)
 	r.Get("/checks/{code}/events", h.events)
 	r.Get("/checks/{code}/status", h.checkStatusText)
+	r.Post("/checks/{code}/clear-events", h.clearEvents)
 	r.Get("/notifications", h.notifications)
 	r.Post("/notifications/{code}/retry", h.retryNotification)
 	r.Post("/schedule/preview", h.schedulePreview)
+}
+
+// clearEvents drops the ping history and returns the check to new, for a job
+// whose shape changed and whose numbers should start over.
+func (h *frontHandler) clearEvents(w http.ResponseWriter, r *http.Request) {
+	c, ok := h.checkByName(w, r, chi.URLParam(r, "code"))
+	if !ok {
+		return
+	}
+	if _, err := h.db.ClearEvents(r.Context(), c.ID); err != nil {
+		jsonError(w, http.StatusInternalServerError, "服务器错误")
+		return
+	}
+	writeText(w, http.StatusOK, "OK")
 }
 
 func (h *frontHandler) project(w http.ResponseWriter, r *http.Request) {

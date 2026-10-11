@@ -443,3 +443,94 @@ func TestUpdateCheckRoundTrip(t *testing.T) {
 		t.Errorf("null timestamps should stay null: %+v", got)
 	}
 }
+
+func TestClearEventsWipesHistoryButKeepsFlips(t *testing.T) {
+	db := testDB(t)
+	p := testProject(t, db)
+	c := newCheck(t, db, p.ID, "任务", "", "")
+	ctx := context.Background()
+
+	if _, _, _, _, err := db.RecordPing(ctx, c.ID, engine.ActionSuccess, PingInput{Method: "GET"}); err != nil {
+		t.Fatal(err)
+	}
+	rid := "11111111-1111-1111-1111-111111111111"
+	if _, _, _, _, err := db.RecordPing(ctx, c.ID, engine.ActionStart,
+		PingInput{Method: "GET", Rid: &rid}); err != nil {
+		t.Fatal(err)
+	}
+
+	before, err := db.Flips(ctx, c.ID, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(before) == 0 {
+		t.Fatal("the success ping should have left a flip")
+	}
+
+	got, err := db.ClearEvents(ctx, c.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got.Status != engine.StatusNew {
+		t.Errorf("status = %q, want new", got.Status)
+	}
+	if got.LastPing != nil || got.LastStart != nil || got.LastDuration != nil || got.LastStartRid != nil {
+		t.Errorf("every ping-derived field should be cleared: %+v", got)
+	}
+	if got.AlertAfter != nil {
+		t.Errorf("alert_after = %v, want it to stop tracking until a new ping lands", got.AlertAfter)
+	}
+	if got.FailCount != 0 || got.Flapping || got.FlapSince != nil {
+		t.Errorf("suppression state should reset: %+v", got)
+	}
+	// 计数不清零：后续的 ping 继续往下编号，修剪阈值才算得对。
+	if got.NPings != 2 {
+		t.Errorf("n_pings = %d, want the counter to keep running", got.NPings)
+	}
+
+	pings, err := db.ListPings(ctx, c.ID, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pings) != 0 {
+		t.Errorf("pings = %d, want the history gone", len(pings))
+	}
+
+	after, err := db.Flips(ctx, c.ID, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(after) != len(before) {
+		t.Errorf("flips = %d, want the %d kept for the downtime statistics", len(after), len(before))
+	}
+}
+
+func TestClearEventsLeavesTheCheckTrackable(t *testing.T) {
+	db := testDB(t)
+	p := testProject(t, db)
+	c := newCheck(t, db, p.ID, "任务", "", "")
+	ctx := context.Background()
+
+	if _, _, _, _, err := db.RecordPing(ctx, c.ID, engine.ActionSuccess, PingInput{Method: "GET"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ClearEvents(ctx, c.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	after, err := db.CheckByID(ctx, c.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.Status != engine.StatusNew {
+		t.Fatalf("status = %q, want new before the next ping", after.Status)
+	}
+	updated, flip, _, _, err := db.RecordPing(ctx, c.ID, engine.ActionSuccess, PingInput{Method: "GET"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.Status != engine.StatusUp || flip == nil {
+		t.Errorf("a ping after clearing should push it up again: %q %+v", updated.Status, flip)
+	}
+}

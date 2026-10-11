@@ -36,6 +36,10 @@ type Config struct {
 
 	AlertScanInterval time.Duration
 	FlipIdleSleep     time.Duration
+	// PruneInterval is how often the daemon sweeps every check for old pings,
+	// notifications and flips. Zero disables the sweep, leaving only the hints
+	// that arriving pings push into the queue.
+	PruneInterval time.Duration
 
 	// NagPeriod is the gap between repeated reminders for a still-down check.
 	// Zero disables nagging entirely; channels must also opt in per channel.
@@ -76,6 +80,7 @@ func Default() *Config {
 		NotifyRetries:        envInt("FEIXI_NOTIFY_RETRIES", 2),
 		AlertScanInterval:    envDuration("FEIXI_ALERT_SCAN_INTERVAL", 2*time.Second),
 		FlipIdleSleep:        envDuration("FEIXI_FLIP_IDLE_SLEEP", time.Second),
+		PruneInterval:        envDuration("FEIXI_PRUNE_INTERVAL", 24*time.Hour),
 		NagPeriod:            envDuration("FEIXI_NAG_PERIOD", 0),
 		NagScanInterval:      envDuration("FEIXI_NAG_SCAN_INTERVAL", time.Minute),
 		FlapWindow:           envDuration("FEIXI_FLAP_WINDOW", time.Hour),

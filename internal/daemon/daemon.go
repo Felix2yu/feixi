@@ -52,7 +52,7 @@ func (d *Daemon) QueuePrune(checkID int64) {
 	select {
 	case d.prune <- checkID:
 	default:
-		// The nightly sweep still runs; dropping the hint is not data loss.
+		// 队列满时丢掉这条提示不要紧，全量清扫迟早会补上。
 	}
 }
 
@@ -62,6 +62,7 @@ func (d *Daemon) Run(ctx context.Context) {
 	go d.nagLoop(ctx)
 	go d.flapLoop(ctx)
 	go d.pruneLoop(ctx)
+	go d.pruneSweepLoop(ctx)
 }
 
 func (d *Daemon) scanGoingDown(ctx context.Context) {
@@ -217,6 +218,39 @@ func (d *Daemon) pruneLoop(ctx context.Context) {
 			}
 		}
 	}
+}
+
+// pruneSweepLoop trims every check on a schedule. The ping-triggered hints in
+// pruneLoop only reach checks that keep reporting in, so a job that stopped
+// pinging would otherwise keep its old pings, flips and notifications forever.
+// One sweep also runs at startup, when the hints queued before a restart are
+// long gone.
+func (d *Daemon) pruneSweepLoop(ctx context.Context) {
+	if d.Cfg.PruneInterval <= 0 {
+		return
+	}
+	d.sweepAll(ctx)
+
+	ticker := time.NewTicker(d.Cfg.PruneInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			d.sweepAll(ctx)
+		}
+	}
+}
+
+func (d *Daemon) sweepAll(ctx context.Context) {
+	n, err := d.DB.PruneAll(ctx, d.Cfg.PingLogLimit)
+	if err != nil {
+		d.Log.Warn("全量清理失败", "swept", n, "err", err)
+		return
+	}
+	d.Log.Info("全量清理完成", "checks", n)
 }
 
 func sleep(ctx context.Context, d time.Duration) {

@@ -123,6 +123,7 @@ curl $SITE_ROOT/api/v3/badges/
 | `FEIXI_MAX_CHECKS` | `100` | 检查项数量上限；`?create=1` 的自动建档可临时超到两倍 |
 | `FEIXI_PING_BODY_LIMIT` | `10000` | 单个 ping 请求体保留字节数 |
 | `FEIXI_PING_LOG_LIMIT` | `100` | 每个检查项保留的 ping 条数 |
+| `FEIXI_PRUNE_INTERVAL` | `24h` | 全量清理周期；启动时先扫一次，`0` 表示只靠 ping 触发的修剪 |
 | `FEIXI_SECRET_KEY` | 自动生成并存库 | 徽章 URL 签名密钥 |
 | `FEIXI_ALLOW_PRIVATE_URLS` | `true` | 是否允许通知打到内网 |
 | `FEIXI_MASTER_BADGE_LABEL` | `飞檄` | 全量徽章左半边的文字 |

@@ -390,8 +390,41 @@ func (db *DB) UpdateCheck(ctx context.Context, c *engine.Check) error {
 	})
 }
 
+// ClearEvents wipes a check's ping history and sends it back to new, so a job
+// that changed shape can be re-measured from scratch. Flip rows stay: they are
+// what the downtime statistics are replayed from.
+func (db *DB) ClearEvents(ctx context.Context, checkID int64) (*engine.Check, error) {
+	var out *engine.Check
+	err := db.WriteTx(ctx, func(tx *sql.Tx) error {
+		c, err := scanCheck(tx.QueryRowContext(ctx,
+			`SELECT `+checkColumns+` FROM checks WHERE id = ?`, checkID))
+		if err != nil {
+			return err
+		}
+		c.Status = engine.StatusNew
+		c.LastPing = nil
+		c.LastStart = nil
+		c.LastStartRid = nil
+		c.LastDuration = nil
+		c.AlertAfter = nil
+		c.FailCount = 0
+		c.Flapping = false
+		c.FlapSince = nil
+
+		if _, err := tx.ExecContext(ctx, `DELETE FROM pings WHERE owner_id = ?`, checkID); err != nil {
+			return err
+		}
+		if err := updateCheckState(ctx, tx, c); err != nil {
+			return err
+		}
+		out = c
+		return nil
+	})
+	return out, err
+}
+
 // RenameAndDelete detaches the ping URL before deleting, so a ping arriving
-// mid-delete cannot hold the foreign key open. Copied from rename_and_delete.
+// mid-delete cannot hold the foreign key open.
 func (db *DB) RenameAndDelete(ctx context.Context, checkID int64) (*engine.Check, error) {
 	c, err := db.CheckByID(ctx, checkID)
 	if err != nil {

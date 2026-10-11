@@ -61,8 +61,8 @@ func (db *DB) PruneCheck(ctx context.Context, checkID int64, limit int) error {
 	})
 }
 
-// PruneAll sweeps every check; the nightly job uses it after a restart, when
-// per-ping hints have long been lost.
+// PruneAll sweeps every check; the daemon runs it at startup and then once per
+// FEIXI_PRUNE_INTERVAL, so checks that stopped reporting in still get trimmed.
 func (db *DB) PruneAll(ctx context.Context, limit int) (int, error) {
 	rows, err := db.Read.QueryContext(ctx, `SELECT id FROM checks ORDER BY id`)
 	if err != nil {

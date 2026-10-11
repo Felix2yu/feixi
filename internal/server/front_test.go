@@ -716,3 +716,40 @@ func TestSchedulePreviewEndpoint(t *testing.T) {
 		t.Errorf("next = %d entries, want none", got)
 	}
 }
+
+func TestClearEventsEndpoint(t *testing.T) {
+	ts, _ := newFrontServer(t, &fakeNotifier{})
+	ctx := context.Background()
+
+	_, code := createCheck(t, ts, map[string]any{"name": "任务"})
+	pingCode(t, ts, code, "")
+
+	c, err := ts.db.CheckByCode(ctx, code)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res := ts.do(t, "POST", "/front/checks/"+code+"/clear-events", nil); res.StatusCode != http.StatusOK {
+		t.Fatalf("clear-events = %d, body %s", res.StatusCode, read(t, res))
+	}
+
+	after, err := ts.db.CheckByID(ctx, c.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.Status != engine.StatusNew || after.LastPing != nil || after.AlertAfter != nil {
+		t.Errorf("check after clearing = %+v, want a fresh new check", after)
+	}
+	if pings, err := ts.db.ListPings(ctx, c.ID, 10); err != nil || len(pings) != 0 {
+		t.Errorf("pings = %d/%v, want the history gone", len(pings), err)
+	}
+
+	// 清完还得能重新计时：一次 ping 就把它推回 up。
+	pingCode(t, ts, code, "")
+	if got, err := ts.db.CheckByID(ctx, c.ID); err != nil || got.Status != engine.StatusUp {
+		t.Errorf("status after a new ping = %q/%v, want up", got.Status, err)
+	}
+
+	if res := ts.do(t, "POST", "/front/checks/no-such-code/clear-events", nil); res.StatusCode != http.StatusNotFound {
+		t.Errorf("unknown check = %d, want 404", res.StatusCode)
+	}
+}

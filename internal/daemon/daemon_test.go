@@ -554,3 +554,100 @@ func waitFor(t *testing.T, cond func() bool, msg string) {
 	}
 	t.Fatalf("timed out: %s", msg)
 }
+
+func TestPruneSweepTrimsChecksThatStoppedPinging(t *testing.T) {
+	d, db, _ := testDaemon(t)
+	ctx := context.Background()
+	d.Cfg.PingLogLimit = 2
+	p := project(t, db)
+
+	c, err := db.CreateCheck(ctx, &store.NewCheck{
+		ProjectID: p.ID, Name: "停掉的任务", Kind: engine.KindSimple,
+		Timeout: engine.DefaultTimeout, Grace: engine.DefaultGrace, TZ: "UTC",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// 一条修剪提示都没推过：只有全量清扫会管它。
+	for i := 0; i < 5; i++ {
+		if _, _, _, _, err := db.RecordPing(ctx, c.ID, engine.ActionLog, store.PingInput{Method: "GET"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if pings, err := db.ListPings(ctx, c.ID, 10); err != nil || len(pings) != 5 {
+		t.Fatalf("pings = %d/%v before the sweep", len(pings), err)
+	}
+
+	d.sweepAll(ctx)
+
+	pings, err := db.ListPings(ctx, c.ID, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pings) != 2 {
+		t.Errorf("pings = %d, want trimmed to PingLogLimit=2", len(pings))
+	}
+}
+
+func TestPruneSweepLoopSweepsAtStartup(t *testing.T) {
+	d, db, _ := testDaemon(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	d.Cfg.PingLogLimit = 1
+	d.Cfg.PruneInterval = time.Hour
+	p := project(t, db)
+
+	c, err := db.CreateCheck(ctx, &store.NewCheck{
+		ProjectID: p.ID, Name: "开机清扫", Kind: engine.KindSimple,
+		Timeout: engine.DefaultTimeout, Grace: engine.DefaultGrace, TZ: "UTC",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 3; i++ {
+		if _, _, _, _, err := db.RecordPing(ctx, c.ID, engine.ActionLog, store.PingInput{Method: "GET"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	go d.pruneSweepLoop(ctx)
+
+	// 下一次周期还差得远，但开机那一次必须补上重启期间丢掉的修剪提示。
+	waitFor(t, func() bool {
+		pings, err := db.ListPings(ctx, c.ID, 10)
+		return err == nil && len(pings) == 1
+	}, "the startup sweep should have trimmed the check")
+}
+
+func TestPruneSweepLoopStopsWhenDisabled(t *testing.T) {
+	d, db, _ := testDaemon(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	d.Cfg.PingLogLimit = 1
+	d.Cfg.PruneInterval = 0
+	p := project(t, db)
+
+	c, err := db.CreateCheck(ctx, &store.NewCheck{
+		ProjectID: p.ID, Name: "关掉清扫", Kind: engine.KindSimple,
+		Timeout: engine.DefaultTimeout, Grace: engine.DefaultGrace, TZ: "UTC",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 3; i++ {
+		if _, _, _, _, err := db.RecordPing(ctx, c.ID, engine.ActionLog, store.PingInput{Method: "GET"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	go d.pruneSweepLoop(ctx)
+	time.Sleep(50 * time.Millisecond)
+
+	pings, err := db.ListPings(ctx, c.ID, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pings) != 3 {
+		t.Errorf("pings = %d, want PruneInterval=0 to leave the history alone", len(pings))
+	}
+}
