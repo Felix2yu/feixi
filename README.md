@@ -19,6 +19,7 @@
 - 仪表板可按状态、名称、下次到期、最后 ping 排序（点表头，选择记在浏览器里），可勾选多项批量暂停 / 恢复 / 删除
 - 检查项可一键清空历史：回到「新建」重新计时，宕机统计与状态翻转记录保留
 - 整个项目的 ping 地址可在「设置」切成 `<项目前缀>/<slug>` 形态（没有 slug 的检查项仍用 UUID），深浅色也能手动切换，默认跟随系统
+- 从 healthchecks 迁移：`feixi import checks.json` 直接吃它的导出原文，保留 ping UUID，脚本只换域名（详见「从 healthchecks 迁移」）
 - 可安装为 PWA：桌面与手机主屏都有独立窗口与图标（`/manifest.webmanifest` + 全套图标），`/sw.js` 只给本次构建的壳与静态资源做秒开，**不承诺离线**，见「边界」
 
 ## 状态语义
@@ -117,6 +118,24 @@ curl $SITE_ROOT/api/v3/badges/
 
 **没有鉴权**：定位是内网自用，所有 `/api`、`/front`、`/ping` 接口都是开放的。要放到公网请自己套反向代理 + Basic Auth，或者只监听 `127.0.0.1`。
 
+## 从 healthchecks 迁移
+
+`feixi import` 吃 healthchecks 的导出原文，把检查项定义搬进本机库：
+
+```bash
+curl -sS -H "X-Api-Key: <写入 key>" $SITE_ROOT/api/v3/checks/ > checks.json
+feixi import checks.json --dry-run     # 先看报告，不写库
+feixi import checks.json               # 路径写 - 从标准输入读
+```
+
+- **用写入 key 导出**。只读 key 的响应里把 `uuid` 换成了 `unique_key`，导入时只能另生成地址，脚本里的 ping 路径就得跟着改；写入 key 下 UUID 原样保留，改的只有域名。
+- 只搬定义：历史 ping、当前状态、宕机统计都不迁移；`status: paused` 的条目进来后是「新建」，收到第一次 ping 才算正常。
+- **渠道不导入**（两边的渠道 UUID 不通），进来的检查项不订阅任何渠道，去界面上逐个勾。报告每行都会提醒一次。
+- `schedule`：5 段 cron 原样带过。systemd `OnCalendar` 只在能无损降段时接受——单条表达式、不带年份、不带 `~` 月末、秒位为 0 或省略、且不同时限定日子和星期（cron 里这两项取并集，systemd 取交集）。降不了的不猜，报告里给原因，按提示手改。
+- 邮件形态的 `subject`/`subject_fail` 折进 `success_kw`/`failure_kw`；`filter_subject`/`filter_body` 不带过来。
+- 重跑对**带 UUID 的条目**安全：库里已有同一 UUID 的算「已存在」跳过，不动原检查项。用只读 key 导出的条目没有 UUID，重跑会再建一条，先 `--dry-run` 看一眼。
+- `FEIXI_MAX_CHECKS`（默认 100）仍然生效，拦下的条目会在报告里点名可以用它放宽。
+
 ## 环境变量
 
 | 变量 | 默认 | 说明 |
@@ -181,6 +200,6 @@ CI 接的是组织统一的 reusable workflow（`Felix2yu/.github`，pin 在 `@v
 - 多用户、团队、权限与登录：单实例内网自用，访问控制交给反向代理
 - 邮件形态的日报 / 周报：要额外维护 SMTP 与一套发送状态（宕机催促已按渠道内置，见 `FEIXI_NAG_PERIOD`）
 - 用邮件地址发 ping、把大请求体外置到对象存储
-- systemd `OnCalendar` 表达式：cron 覆盖绝大多数场景
+- systemd `OnCalendar` 表达式：运行时不解析，只有 `feixi import` 在做无损降段（见「从 healthchecks 迁移」），降不了的列出来让人改
 - 进程内执行命令型的通知渠道（等于把 RCE 交给配置项）
 - Prometheus 指标与外部监控接入：单进程用日志 + `/api/v3/status/` 足够

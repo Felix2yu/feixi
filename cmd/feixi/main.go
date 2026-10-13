@@ -36,8 +36,10 @@ func main() {
 		err = serve(ctx, log)
 	case "prune":
 		err = runPrune(ctx, log)
+	case "import":
+		err = runImport(ctx, log, args)
 	default:
-		err = fmt.Errorf("未知命令 %q（可用：serve、prune）", cmd)
+		err = fmt.Errorf("未知命令 %q（可用：serve、prune、import）", cmd)
 	}
 	if err != nil && err != context.Canceled {
 		log.Error("退出", "err", err)
