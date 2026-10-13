@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"strings"
+
 	"github.com/google/uuid"
 
 	"github.com/yufei/feixi/internal/engine"
@@ -532,5 +534,38 @@ func TestClearEventsLeavesTheCheckTrackable(t *testing.T) {
 	}
 	if updated.Status != engine.StatusUp || flip == nil {
 		t.Errorf("a ping after clearing should push it up again: %q %+v", updated.Status, flip)
+	}
+}
+
+func TestCreateCheckHonoursPinnedCode(t *testing.T) {
+	db := testDB(t)
+	p := testProject(t, db)
+	ctx := context.Background()
+	code := "3d2f8bd8-cb1a-4a6c-b0a2-6b8e0f8b7c11"
+
+	c, err := db.CreateCheck(ctx, &NewCheck{
+		ProjectID: p.ID, Code: code, Name: "迁移来的",
+		Kind: engine.KindSimple, Timeout: time.Hour, Grace: time.Minute, TZ: "UTC",
+	})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if c.Code != code {
+		t.Errorf("Code = %q，应该用给定的 UUID 而不是新生成", c.Code)
+	}
+	if _, err := uuid.Parse(c.BadgeKey); err != nil {
+		t.Errorf("badge_key = %q 没生成：%v", c.BadgeKey, err)
+	}
+
+	_, err = db.CreateCheck(ctx, &NewCheck{
+		ProjectID: p.ID, Code: code, Name: "撞码",
+		Kind: engine.KindSimple, Timeout: time.Hour, Grace: time.Minute, TZ: "UTC",
+	})
+	if err == nil {
+		t.Fatal("同码重复插入应该失败")
+	}
+	// 导入器靠这段文字把 UNIQUE 错误翻成人话，改库时别把它跑丢了。
+	if !strings.Contains(err.Error(), "checks.code") {
+		t.Errorf("错误里该带索引名，好让上层认出撞码：%v", err)
 	}
 }

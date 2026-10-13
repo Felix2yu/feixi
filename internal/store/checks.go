@@ -237,7 +237,11 @@ func (db *DB) DistinctTags(ctx context.Context, projectID int64) ([]string, erro
 }
 
 type NewCheck struct {
-	ProjectID     int64
+	ProjectID int64
+	// Code pins the ping UUID. Empty generates one; the healthchecks importer
+	// passes the source UUID so already-deployed ping URLs survive the move
+	// needing only a host change.
+	Code          string
 	Name          string
 	Slug          string
 	Tags          string
@@ -263,7 +267,10 @@ type NewCheck struct {
 }
 
 func (db *DB) CreateCheck(ctx context.Context, in *NewCheck) (*engine.Check, error) {
-	code := uuid.NewString()
+	code := in.Code
+	if code == "" {
+		code = uuid.NewString()
+	}
 	now := time.Now().UTC()
 
 	err := db.WriteTx(ctx, func(tx *sql.Tx) error {
