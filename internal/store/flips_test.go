@@ -19,7 +19,8 @@ func TestFlipsRangeFilters(t *testing.T) {
 	record(t, db, c.ID, engine.ActionSuccess, PingInput{})
 
 	// 三条翻转都发生在同一毫秒附近，把 created 拉开才测得动区间。
-	anchor := time.Now().UTC().Add(-3 * time.Hour)
+	// 截到微秒：库里存的是 UnixMicro，带纳秒尾数的话下面那条 Equal 有约 1/1000 概率失败。
+	anchor := time.Now().UTC().Add(-3 * time.Hour).Truncate(time.Microsecond)
 	flips, err := db.Flips(ctx, c.ID, nil, nil)
 	if err != nil {
 		t.Fatal(err)
