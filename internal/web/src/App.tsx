@@ -45,7 +45,7 @@ export default function App() {
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-2">
             <span className="hidden text-xs text-ink-soft sm:block">
-              {project.data ? `${project.data.name} · ${project.data.check_count}/${project.data.max_checks} 检查项` : "…"}
+              {project.data ? `${project.data.name} · ${project.data.check_count}${project.data.max_checks > 0 ? `/${project.data.max_checks}` : ""} 检查项` : "…"}
             </span>
             <button
               type="button"

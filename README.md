@@ -69,7 +69,7 @@ curl -I http://localhost:8080/ping/<uuid>           # HEAD 同样算一次信号
 
 三种方法都能用：`GET`、`HEAD`、`POST`。检查项打开「仅 POST」后，`GET`/`HEAD` 仍会留档，但记为忽略、不改状态。
 
-除了 UUID，也可以用 `<项目前缀>/<slug>` 形态的地址；带 `?create=1` 时首次 ping 会自动建档，适合任务名会动态变化的场景。自动建档的额度可以临时超到 `FEIXI_MAX_CHECKS` 的两倍——脚本突然多出一批任务名时先收下 ping，再由人去清；超过两倍仍回 `404`。
+除了 UUID，也可以用 `<项目前缀>/<slug>` 形态的地址；带 `?create=1` 时首次 ping 会自动建档，适合任务名会动态变化的场景。设了 `FEIXI_MAX_CHECKS` 时，自动建档的额度可临时超到它的两倍——脚本突然多出一批任务名时先收下 ping，再由人去清；超过两倍仍回 `404`。默认不设上限，这条也就不生效。
 
 ## 通知渠道
 
@@ -134,7 +134,7 @@ feixi import checks.json               # 路径写 - 从标准输入读
 - `schedule`：5 段 cron 原样带过。systemd `OnCalendar` 只在能无损降段时接受——单条表达式、不带年份、不带 `~` 月末、秒位为 0 或省略、且不同时限定日子和星期（cron 里这两项取并集，systemd 取交集）。降不了的不猜，报告里给原因，按提示手改。
 - 邮件形态的 `subject`/`subject_fail` 折进 `success_kw`/`failure_kw`；`filter_subject`/`filter_body` 不带过来。
 - 重跑对**带 UUID 的条目**安全：库里已有同一 UUID 的算「已存在」跳过，不动原检查项。用只读 key 导出的条目没有 UUID，重跑会再建一条，先 `--dry-run` 看一眼。
-- `FEIXI_MAX_CHECKS`（默认 100）仍然生效，拦下的条目会在报告里点名可以用它放宽。
+- 默认**不限制**检查项条数；显式配了 `FEIXI_MAX_CHECKS` 才会拦，拦下的条目在报告里点名。
 
 ## 环境变量
 
@@ -143,7 +143,7 @@ feixi import checks.json               # 路径写 - 从标准输入读
 | `FEIXI_LISTEN` | `:8080` | 监听地址 |
 | `FEIXI_DB` | `data/feixi.db` | SQLite 文件路径 |
 | `FEIXI_SITE_ROOT` | `http://localhost<listen>` | 生成 ping_url / 徽章地址用的对外地址 |
-| `FEIXI_MAX_CHECKS` | `100` | 检查项数量上限；`?create=1` 的自动建档可临时超到两倍 |
+| `FEIXI_MAX_CHECKS` | `0`（不限制） | 检查项数量上限，配了才生效；`?create=1` 的自动建档可临时超到两倍 |
 | `FEIXI_PING_BODY_LIMIT` | `10000` | 单个 ping 请求体保留字节数 |
 | `FEIXI_PING_LOG_LIMIT` | `100` | 每个检查项保留的 ping 条数 |
 | `FEIXI_PRUNE_INTERVAL` | `24h` | 全量清理周期；启动时先扫一次，`0` 表示只靠 ping 触发的修剪 |

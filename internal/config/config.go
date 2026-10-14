@@ -19,7 +19,8 @@ type Config struct {
 
 	PingBodyLimit int
 	PingLogLimit  int
-	MaxChecks     int
+	// MaxChecks caps checks per project; 0 (the default) means no cap.
+	MaxChecks int
 	// MasterBadgeLabel is the left half of the all-tags badge.
 	MasterBadgeLabel string
 
@@ -69,7 +70,7 @@ func Default() *Config {
 		SiteRoot:             env("FEIXI_SITE_ROOT", ""),
 		PingBodyLimit:        envInt("FEIXI_PING_BODY_LIMIT", engine.PingBodyLimit),
 		PingLogLimit:         envInt("FEIXI_PING_LOG_LIMIT", engine.PingLogLimit),
-		MaxChecks:            envInt("FEIXI_MAX_CHECKS", 100),
+		MaxChecks:            envInt("FEIXI_MAX_CHECKS", 0),
 		MasterBadgeLabel:     env("FEIXI_MASTER_BADGE_LABEL", "飞檄"),
 		SecretKey:            env("FEIXI_SECRET_KEY", ""),
 		AllowPrivateURLs:     envBool("FEIXI_ALLOW_PRIVATE_URLS", true),

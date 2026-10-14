@@ -32,13 +32,13 @@ func TestDefaultReadsEnvironment(t *testing.T) {
 
 // 非法的环境值一律回落到默认值：启动阶段不该因为一个拼错的数字拒绝起来。
 func TestDefaultFallsBackOnInvalidEnv(t *testing.T) {
-	t.Setenv("FEIXI_MAX_CHECKS", "abc")
+	t.Setenv("FEIXI_PING_LOG_LIMIT", "abc")
 	t.Setenv("FEIXI_NOTIFY_CONNECT_TIMEOUT", "10")
 	t.Setenv("FEIXI_ALLOW_PRIVATE_URLS", "maybe")
 
 	c := Default()
-	if c.MaxChecks != 100 {
-		t.Errorf("max_checks = %d, want fallback 100", c.MaxChecks)
+	if c.PingLogLimit != 100 {
+		t.Errorf("ping_log_limit = %d, want fallback 100", c.PingLogLimit)
 	}
 	if c.NotifyConnectTimeout != 10*time.Second {
 		t.Errorf("connect timeout = %v, want fallback 10s", c.NotifyConnectTimeout)
@@ -55,6 +55,9 @@ func TestDefaultValues(t *testing.T) {
 	}
 	if c.MasterBadgeLabel != "飞檄" {
 		t.Errorf("badge label = %q", c.MasterBadgeLabel)
+	}
+	if c.MaxChecks != 0 {
+		t.Error("check count should default to unlimited")
 	}
 	if c.NagPeriod != 0 {
 		t.Errorf("nag should default off, got %v", c.NagPeriod)

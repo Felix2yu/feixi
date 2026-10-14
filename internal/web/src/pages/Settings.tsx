@@ -66,7 +66,7 @@ export default function Settings() {
           这一版没有登录与用户体系，实例是单项目的，所有限制都来自环境变量；改完重启即可。
         </p>
         <dl className="grid gap-x-6 gap-y-2 text-sm md:grid-cols-2">
-          <Row label="检查项数量" value={info ? `${info.check_count} / ${info.max_checks}` : undefined} hint="FEIXI_MAX_CHECKS" />
+          <Row label="检查项数量" value={info ? (info.max_checks > 0 ? `${info.check_count} / ${info.max_checks}` : String(info.check_count)) : undefined} hint="FEIXI_MAX_CHECKS" />
           <Row label="Ping 体上限" value={info ? `${info.ping_body_limit} 字节` : undefined} hint="FEIXI_PING_BODY_LIMIT" />
           <Row label="Ping 保留条数" value={info ? String(info.ping_log_limit) : undefined} hint="FEIXI_PING_LOG_LIMIT" />
           <Row label="Slug ping 前缀" value={info?.ping_key} />

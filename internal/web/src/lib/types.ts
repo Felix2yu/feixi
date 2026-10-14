@@ -167,6 +167,7 @@ export interface ProjectInfo {
   ping_key: string;
   show_slugs: boolean;
   check_count: number;
+  // 0 means no cap (FEIXI_MAX_CHECKS unset).
   max_checks: number;
   ping_body_limit: number;
   ping_log_limit: number;
