@@ -38,7 +38,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     }
     throw new ApiError(message, resp.status);
   }
-  if (path.endsWith("/body")) return text as unknown as T;
+  // Some replies are deliberately plain text ("OK" acks, ping bodies), so the
+  // shape comes from the response header, never from the request path.
+  if (!resp.headers.get("content-type")?.includes("json")) return text as unknown as T;
   return (text ? JSON.parse(text) : undefined) as T;
 }
 
