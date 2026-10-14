@@ -3,6 +3,7 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"strconv"
 	"time"
@@ -95,7 +96,7 @@ func Default() *Config {
 func (c *Config) Validate() error {
 	root := c.SiteRoot
 	if root == "" {
-		root = "http://localhost" + c.Listen
+		root = defaultSiteRoot(c.Listen)
 	}
 	switch {
 	case len(root) >= 8 && root[:7] == "http://":
@@ -116,6 +117,23 @@ func (c *Config) Validate() error {
 // PingRoot is the base of ping URLs, kept separate from SiteRoot so pings can
 // be given a hostname of their own later.
 func (c *Config) PingRoot() string { return c.SiteRoot }
+
+// defaultSiteRoot reads ":8080" as localhost:8080 but keeps an explicit bind
+// host, so a "127.0.0.1:8080" listen no longer yields "localhost127.0.0.1:8080".
+func defaultSiteRoot(listen string) string {
+	host, port, err := net.SplitHostPort(listen)
+	if err != nil {
+		return "http://localhost" + listen
+	}
+	switch host {
+	case "", "0.0.0.0", "::", "[::]":
+		host = "localhost"
+	}
+	if port == "" {
+		return "http://" + host
+	}
+	return "http://" + host + ":" + port
+}
 
 func env(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {

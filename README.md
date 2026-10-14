@@ -142,7 +142,7 @@ feixi import checks.json               # 路径写 - 从标准输入读
 | --- | --- | --- |
 | `FEIXI_LISTEN` | `:8080` | 监听地址 |
 | `FEIXI_DB` | `data/feixi.db` | SQLite 文件路径 |
-| `FEIXI_SITE_ROOT` | `http://localhost<listen>` | 生成 ping_url / 徽章地址用的对外地址 |
+| `FEIXI_SITE_ROOT` | 由监听地址推导 | 生成 ping_url / 徽章地址用的对外地址；`:8080`、`0.0.0.0:8080` 算作 `http://localhost:8080`，`127.0.0.1:8080` 就用它本身 |
 | `FEIXI_MAX_CHECKS` | `0`（不限制） | 检查项数量上限，配了才生效；`?create=1` 的自动建档可临时超到两倍 |
 | `FEIXI_PING_BODY_LIMIT` | `10000` | 单个 ping 请求体保留字节数 |
 | `FEIXI_PING_LOG_LIMIT` | `100` | 每个检查项保留的 ping 条数 |

@@ -80,6 +80,21 @@ func TestValidate(t *testing.T) {
 			wantRoot: "http://localhost:8088", wantHost: "localhost:8088", scheme: "http",
 		},
 		{
+			name:     "explicit bind host becomes the site root instead of being glued to localhost",
+			listen:   "127.0.0.1:8088",
+			wantRoot: "http://127.0.0.1:8088", wantHost: "127.0.0.1:8088", scheme: "http",
+		},
+		{
+			name:     "wildcard IPv4 reads as localhost",
+			listen:   "0.0.0.0:8088",
+			wantRoot: "http://localhost:8088", wantHost: "localhost:8088", scheme: "http",
+		},
+		{
+			name:     "wildcard IPv6 reads as localhost",
+			listen:   "[::]:8088",
+			wantRoot: "http://localhost:8088", wantHost: "localhost:8088", scheme: "http",
+		},
+		{
 			name:     "trailing slashes are trimmed",
 			listen:   ":8080",
 			siteRoot: "https://status.example.com///",
