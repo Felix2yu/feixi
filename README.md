@@ -168,7 +168,7 @@ feixi import checks.json               # 路径写 - 从标准输入读
 | 探活 | `GET /api/v3/status/`（真跑一次 `SELECT 1`，免鉴权），Dockerfile 里已带 `HEALTHCHECK` |
 | 运行身份 | 非 root（alpine `feixi` 用户，入口脚本按 PUID/PGID 降权并 chown `/data`） |
 
-pnpm 命令要在 `internal/web` 目录里跑，那里才有 `packageManager` 声明供其切换版本。
+pnpm 命令要在 `web` 目录里跑，那里才有 `packageManager` 声明供其切换版本。
 
 安装入口只在安全上下文里出现：HTTPS 或 `localhost`。LAN 裸 HTTP（如 `http://192.168.1.10:8080`）打不出「安装」按钮属正常，徽章、ping、API 都不受影响；临时装一次可以 `ssh -L 8080:localhost:8080 <host>` 走本地回环，长期用就给反向代理上 TLS。
 
@@ -177,20 +177,20 @@ SQLite 是 WAL 模式，**需要对数据目录本身可写**；宿主目录属�
 ## 开发
 
 ```bash
-make web     # pnpm install --frozen-lockfile + build 到 internal/web/dist（go:embed 的位置）
+make web     # pnpm install --frozen-lockfile + build 到 web/dist，再拷进 internal/web/dist（go:embed 的位置）
 make run     # 编译到 bin/feixi 并启动
-make dev     # 只起后端；前端另在 internal/web 跑 pnpm dev 走 :5173 代理
+make dev     # 只起后端；前端另在 web 跑 pnpm dev 走 :5173 代理
 make test    # go test ./...
 make vet     # gofmt + go vet + tsc --noEmit
 ```
 
-目录：`internal/engine` 是纯函数状态机（不碰数据库，所有时间边界都在这层测），`internal/store` 是唯一的数据访问层（SQLite 写连接池 `MaxOpenConns=1` + `BEGIN IMMEDIATE`），`internal/notify` 是 apprise 封装 + 投递队列，`internal/web` 是 React SPA。
+目录：`internal/engine` 是纯函数状态机（不碰数据库，所有时间边界都在这层测），`internal/store` 是唯一的数据访问层（SQLite 写连接池 `MaxOpenConns=1` + `BEGIN IMMEDIATE`），`internal/notify` 是 apprise 封装 + 投递队列，`internal/web` 是 React SPA 的 go:embed 位（npm 工程在 `web/`）。
 
-PWA 图标的母版是 `internal/web/brand/favicon.svg`（+ 栅格化出的 `icon-512-source.png`）；`internal/web/public/` 下的七件套与 `favicon.svg` 是 `python3 /path/to/.github/pwa-preset/gen-icons.py --src internal/web/brand/icon-512-source.png --svg internal/web/brand/favicon.svg --bg '#1f2933' --out internal/web/public` 的产物，别手改。Vite 会把 `public/` 原样拷进 `dist/` 根，再由 `go:embed all:dist` 打进二进制。
+PWA 图标的母版是 `web/brand/favicon.svg`（+ 栅格化出的 `icon-512-source.png`）；`web/public/` 下的七件套与 `favicon.svg` 是 `python3 /path/to/.github/pwa-preset/gen-icons.py --src web/brand/icon-512-source.png --svg web/brand/favicon.svg --bg '#1f2933' --out web/public` 的产物，别手改。Vite 会把 `public/` 原样拷进 `dist/` 根，再由 `go:embed all:dist` 打进二进制。
 
 `public/sw.js` 的缓存名由本次构建的 `/assets` 文件名算出（发版即换名，activate 清旧），只在生产构建注册（`main.tsx` 里 `import.meta.env.DEV` 判掉），否则 vite 热更新会被旧壳拖住。这两个目录都在 `src/index.css` 的 `@source not` 里排除过：SVG 的 `transform="…"` 会被 Tailwind 当成 class 候选，白生成 `.transform` 与一串自定义属性。
 
-CI 接的是组织统一的 reusable workflow（`Felix2yu/.github`，pin 在 `@v1`）：`test` → `image` → `release` 三个 job。版本号由 git tag 通过 `-X main.version` 注入，本地 `go build` 出来是 `dev`。工具链版本只有一个来源：仓库根 `.nvmrc` 与 `internal/web/package.json` 的 `packageManager`。
+CI 接的是组织统一的 reusable workflow（`Felix2yu/.github`，pin 在 `@v1`）：`test` → `image` → `release` 三个 job。版本号由 git tag 通过 `-X main.version` 注入，本地 `go build` 出来是 `dev`。工具链版本只有一个来源：仓库根 `.nvmrc` 与 `web/package.json` 的 `packageManager`。
 
 ## 边界
 
