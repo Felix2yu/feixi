@@ -25,9 +25,11 @@ jobs:
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     with:
-      # go.mod 在仓库根，前端在 internal/web
+      # go.mod 在仓库根，前端工程在 web/；产物由 frontend-stage-command
+      # 摆进 //go:embed 的 internal/web/dist
       go-dir: .
-      web-dir: internal/web
+      web-dir: web
+      frontend-stage-command: mkdir -p internal/web/dist && cp -R web/dist/. internal/web/dist/
       # ./... 是安全的：internal/web/dist 里提交了一个占位 .gitkeep，
       # 没构建前端时 //go:embed all:dist 也能解析通过（静态资源走 public/，构建时拷进 dist）。
       test-packages: ./...
@@ -43,9 +45,10 @@ jobs:
       main-package: ./cmd/feixi
       binary-name: feixi
       image-name: ghcr.io/felix2yu/feixi
-      web-dir: internal/web
-      # 无需 frontend-stage-command：//go:embed 的目录就是 internal/web/dist，
-      # 前端构建产物天然落在被嵌入位置，静态资源已经进了二进制。
+      web-dir: web
+      # 前端产物落在 web/dist，由 stage command 摆进 //go:embed 的 internal/web/dist，
+      # 静态资源随二进制进镜像
+      frontend-stage-command: mkdir -p internal/web/dist && cp -R web/dist/. internal/web/dist/
 
   release:
     if: github.event_name == 'release'
@@ -56,4 +59,5 @@ jobs:
       go-dir: .
       main-package: ./cmd/feixi
       binary-name: feixi
-      web-dir: internal/web
+      web-dir: web
+      frontend-stage-command: mkdir -p internal/web/dist && cp -R web/dist/. internal/web/dist/

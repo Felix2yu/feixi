@@ -1,6 +1,6 @@
 # Felix2yu 组织统一依赖更新配置 —— 模板来自 Felix2yu/.github/preset/dependabot.yml
 #
-# 整份复制自 preset，只改了 npm 段的 directory（本仓前端在 internal/web）。
+# 整份复制自 preset，只改了 npm 段的 directory（本仓前端在 web/）。
 # 升级时整份覆盖，不要在副本里手改 —— 否则下次同步会打架。
 # 设计理由与合并策略见 Felix2yu/.github/docs/dependabot.md
 
@@ -33,7 +33,7 @@ updates:
 
   # ── 前端 npm ───────────────────────────────────────────────────────
   - package-ecosystem: "npm"
-    directory: "/internal/web"
+    directory: "/web"
     schedule:
       interval: "weekly"
       day: "friday"

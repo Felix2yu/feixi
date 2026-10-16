@@ -6,7 +6,8 @@ bin/
 data/
 
 # 前端
-internal/web/node_modules/
+web/node_modules/
+web/dist/
 internal/web/dist/*
 # 只留一个 .gitkeep：让没跑过 make web 的机器上 //go:embed all:dist 也能编译，
 # 又不必把构建产物纳入版本控制（否则每次构建后工作区都是脏的）。

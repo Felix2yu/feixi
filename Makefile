@@ -13,7 +13,8 @@ dev:
 	go run ./cmd/feixi serve
 
 web:
-	cd internal/web && pnpm install --frozen-lockfile && pnpm run build
+	cd web && pnpm install --frozen-lockfile && pnpm run build
+	rm -rf internal/web/dist && mkdir -p internal/web/dist && cp -R web/dist/. internal/web/dist/
 	@touch internal/web/dist/.gitkeep  # vite 的 emptyOutDir 会连占位文件一起清掉，补回来才编得动
 
 # 装配式镜像：先出 bin/feixi（前端产物已 go:embed 进二进制），镜像只拼装。
@@ -24,8 +25,8 @@ test:
 	go test ./...
 
 vet:
-	gofmt -l . && go vet ./... && cd internal/web && pnpm exec tsc --noEmit
+	gofmt -l . && go vet ./... && cd web && pnpm exec tsc --noEmit
 
 clean:
-	rm -rf bin internal/web/dist
+	rm -rf bin web/dist internal/web/dist
 	@mkdir -p internal/web/dist && touch internal/web/dist/.gitkeep

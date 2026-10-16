@@ -19,7 +19,7 @@ ENV TZ=Asia/Shanghai \
 
 COPY --chmod=755 bin/feixi /usr/local/bin/feixi
 # 入口脚本按 PUID/PGID 调整身份并修正 /data 属主（SQLite WAL 需要对目录本身可写）
-COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY --chmod=755 scripts/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 RUN mkdir -p /data && chown -R feixi:feixi /data
 VOLUME ["/data"]
