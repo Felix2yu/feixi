@@ -1,9 +1,9 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* PWA 资产是纯图元，不进 class 扫描：母版里的 transform="…" 会被当成候选，
    白生成 .transform 与一串 --tw-rotate-* 、--tw-skew-* 自定义属性（实测 +469 B 死 CSS）。 */
-@source not "../brand/**";
-@source not "../public/**";
+@source not '../brand/**';
+@source not '../public/**';
 
 /* 深色由 html 上的 .dark 决定：没手动选过时跟着系统走，选过就以选的为准。 */
 @custom-variant dark (&:where(.dark, .dark *));
@@ -49,8 +49,15 @@ body {
   background: var(--color-canvas);
   color: var(--color-ink);
   font-family:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
-    "PingFang SC", "Microsoft YaHei", sans-serif;
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    'Helvetica Neue',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 14px;
 }
 

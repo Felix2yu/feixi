@@ -1,16 +1,16 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
-import { ArrowDown, ArrowUp, Pause, Pencil, Play, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
-import { StatusGlyph } from "../components/StatusGlyph";
-import { Button, CopyButton, EmptyState, Select, cx, useToast } from "../components/ui";
-import { api } from "../lib/api";
-import { defaultSort, nextSort, sortChecks, type SortKey, type SortState } from "../lib/sort";
-import { countdown, fromNow, humanDuration } from "../lib/time";
-import type { Check, Display } from "../lib/types";
-import { useStatusFeed } from "../lib/useStatus";
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
+import { ArrowDown, ArrowUp, Pause, Pencil, Play, Plus, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { StatusGlyph } from '../components/StatusGlyph';
+import { Button, CopyButton, EmptyState, Select, cx, useToast } from '../components/ui';
+import { api } from '../lib/api';
+import { defaultSort, nextSort, sortChecks, type SortKey, type SortState } from '../lib/sort';
+import { countdown, fromNow, humanDuration } from '../lib/time';
+import type { Check, Display } from '../lib/types';
+import { useStatusFeed } from '../lib/useStatus';
 
-const SORT_KEY = "feixi-sort";
+const SORT_KEY = 'feixi-sort';
 
 // 排序选择留在本地：仪表板每次刷新都重画，不该被服务端参数牵着走。
 function initialSort(): SortState {
@@ -18,7 +18,7 @@ function initialSort(): SortState {
   if (!raw) return defaultSort;
   try {
     const parsed = JSON.parse(raw) as SortState;
-    if (typeof parsed?.key === "string" && typeof parsed?.desc === "boolean") return parsed;
+    if (typeof parsed?.key === 'string' && typeof parsed?.desc === 'boolean') return parsed;
   } catch {
     // 存坏了就回到默认
   }
@@ -34,27 +34,27 @@ const stamp = (iso: string | null | undefined): number | null => {
 function plan(c: Check): string {
   if (c.timeout) return `每 ${humanDuration(c.timeout * 1000)}`;
   if (c.schedule) return `${c.schedule}（${c.tz}）`;
-  return "—";
+  return '—';
 }
 
 // dueCell wording per state: only a live check has something to count down to.
 function dueCell(status: Display, started: boolean, next: string | null, now: number): string {
-  if (started) return "运行中";
-  if (status === "new") return "等待 ping";
-  if (status === "paused") return "已暂停";
-  if (status === "down") return "已宕机";
-  if (!next) return "—";
+  if (started) return '运行中';
+  if (status === 'new') return '等待 ping';
+  if (status === 'paused') return '已暂停';
+  if (status === 'down') return '已宕机';
+  if (!next) return '—';
   return countdown(next, now);
 }
 
 export default function Dashboard() {
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState('');
   const [tags, setTags] = useState<string[]>([]);
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState('');
   const [sort, setSort] = useState<SortState>(initialSort);
   const [selected, setSelected] = useState<string[]>([]);
   const { feed } = useStatusFeed();
-  const checks = useQuery({ queryKey: ["checks"], queryFn: api.checks });
+  const checks = useQuery({ queryKey: ['checks'], queryFn: api.checks });
   const client = useQueryClient();
   const toast = useToast();
 
@@ -67,42 +67,42 @@ export default function Dashboard() {
   const pause = useMutation({
     mutationFn: (c: Check) => api.pause(c.uuid),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ["checks"] });
-      client.invalidateQueries({ queryKey: ["status"] });
-      toast("已暂停监控");
+      client.invalidateQueries({ queryKey: ['checks'] });
+      client.invalidateQueries({ queryKey: ['status'] });
+      toast('已暂停监控');
     },
-    onError: (e: Error) => toast(e.message, "error"),
+    onError: (e: Error) => toast(e.message, 'error')
   });
 
   const resume = useMutation({
     mutationFn: (c: Check) => api.resume(c.uuid),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ["checks"] });
-      toast("已恢复，等待新的 ping");
+      client.invalidateQueries({ queryKey: ['checks'] });
+      toast('已恢复，等待新的 ping');
     },
-    onError: (e: Error) => toast(e.message, "error"),
+    onError: (e: Error) => toast(e.message, 'error')
   });
 
   const remove = useMutation({
     mutationFn: (c: Check) => api.deleteCheck(c.uuid),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ["checks"] });
-      toast("检查项已删除");
+      client.invalidateQueries({ queryKey: ['checks'] });
+      toast('检查项已删除');
     },
-    onError: (e: Error) => toast(e.message, "error"),
+    onError: (e: Error) => toast(e.message, 'error')
   });
 
   const bulkActions = {
     pause: (c: Check) => api.pause(c.uuid),
     resume: (c: Check) => api.resume(c.uuid),
     remove: (c: Check) => api.deleteCheck(c.uuid),
-    clear: (c: Check) => api.clearEvents(c.uuid),
+    clear: (c: Check) => api.clearEvents(c.uuid)
   };
   const bulkLabels: Record<keyof typeof bulkActions, string> = {
-    pause: "已暂停",
-    resume: "已恢复",
-    remove: "已删除",
-    clear: "已清空历史",
+    pause: '已暂停',
+    resume: '已恢复',
+    remove: '已删除',
+    clear: '已清空历史'
   };
 
   const bulk = useMutation({
@@ -112,38 +112,44 @@ export default function Dashboard() {
         .filter((c): c is Check => !!c);
       // 只对合用的下手：恢复只发给暂停中的，暂停只发给还活着的。
       const picked =
-        action === "pause"
-          ? targets.filter((c) => c.status !== "paused")
-          : action === "resume"
-            ? targets.filter((c) => c.status === "paused")
+        action === 'pause'
+          ? targets.filter((c) => c.status !== 'paused')
+          : action === 'resume'
+            ? targets.filter((c) => c.status === 'paused')
             : targets;
       const run: (c: Check) => Promise<unknown> = bulkActions[action];
       const results = await Promise.allSettled(picked.map((c) => run(c)));
-      const ok = results.filter((r) => r.status === "fulfilled").length;
+      const ok = results.filter((r) => r.status === 'fulfilled').length;
       return { ok, failed: results.length - ok };
     },
     onSuccess: ({ ok, failed }, action) => {
       const done = bulkLabels[action];
-      toast(failed > 0 ? `${done} ${ok} 项，失败 ${failed} 项` : `${done} ${ok} 项`, failed > 0 ? "error" : "ok");
+      toast(
+        failed > 0 ? `${done} ${ok} 项，失败 ${failed} 项` : `${done} ${ok} 项`,
+        failed > 0 ? 'error' : 'ok'
+      );
       setSelected([]);
-      client.invalidateQueries({ queryKey: ["checks"] });
-      client.invalidateQueries({ queryKey: ["status"] });
+      client.invalidateQueries({ queryKey: ['checks'] });
+      client.invalidateQueries({ queryKey: ['status'] });
     },
-    onError: (e: Error) => toast(e.message, "error"),
+    onError: (e: Error) => toast(e.message, 'error')
   });
 
   if (checks.isLoading) return <div className="text-sm text-ink-soft">加载中…</div>;
   const all = checks.data?.checks ?? [];
 
-  const allTags = Array.from(new Set(all.flatMap((c) => c.tags.split(/\s+/).filter(Boolean)))).sort();
+  const allTags = Array.from(
+    new Set(all.flatMap((c) => c.tags.split(/\s+/).filter(Boolean)))
+  ).sort();
 
   const live = new Map((feed?.details ?? []).map((d) => [d.code, d]));
   const visible = all.filter((c) => {
     const status = live.get(c.uuid)?.status ?? c.status;
     const needle = search.trim().toLowerCase();
-    if (needle && !`${c.name} ${c.tags} ${c.slug} ${c.uuid}`.toLowerCase().includes(needle)) return false;
+    if (needle && !`${c.name} ${c.tags} ${c.slug} ${c.uuid}`.toLowerCase().includes(needle))
+      return false;
     if (tags.length && !tags.every((t) => c.tags.split(/\s+/).includes(t))) return false;
-    if (statusFilter === "started") return !!live.get(c.uuid)?.started;
+    if (statusFilter === 'started') return !!live.get(c.uuid)?.started;
     if (statusFilter && status !== statusFilter) return false;
     return true;
   });
@@ -153,9 +159,9 @@ export default function Dashboard() {
     const started = d?.started ?? c.started;
     return {
       name: c.name || c.uuid,
-      status: started ? "started" : (d?.status ?? c.status),
+      status: started ? 'started' : (d?.status ?? c.status),
       due: stamp(d?.next_ping ?? c.next_ping),
-      lastPing: stamp(d?.last_ping ?? c.last_ping),
+      lastPing: stamp(d?.last_ping ?? c.last_ping)
     };
   });
   const selectedVisible = shown.filter((c) => selected.includes(c.uuid));
@@ -170,7 +176,12 @@ export default function Dashboard() {
           placeholder="搜索名称、标签或 UUID"
           className="min-w-40 flex-1 rounded-md border border-line bg-surface px-2.5 py-1.5 text-sm outline-none focus:border-ink-soft dark:bg-transparent"
         />
-        <Select className="w-36!" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="按状态筛选">
+        <Select
+          className="w-36!"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          aria-label="按状态筛选"
+        >
           <option value="">全部状态</option>
           <option value="new">新建</option>
           <option value="paused">已暂停</option>
@@ -194,13 +205,21 @@ export default function Dashboard() {
             return (
               <button
                 key={tag}
-                onClick={() => setTags((prev) => (on ? prev.filter((t) => t !== tag) : [...prev, tag]))}
+                onClick={() =>
+                  setTags((prev) => (on ? prev.filter((t) => t !== tag) : [...prev, tag]))
+                }
                 className={cx(
-                  "rounded-full border px-2 py-0.5 text-xs",
-                  on ? "border-ink bg-accent text-accent-ink" : "border-line bg-surface text-ink-soft",
+                  'rounded-full border px-2 py-0.5 text-xs',
+                  on
+                    ? 'border-ink bg-accent text-accent-ink'
+                    : 'border-line bg-surface text-ink-soft'
                 )}
               >
-                {status ? <span className={cx("mr-1 inline-block h-1.5 w-1.5 rounded-full", dotClass(status))} /> : null}
+                {status ? (
+                  <span
+                    className={cx('mr-1 inline-block h-1.5 w-1.5 rounded-full', dotClass(status))}
+                  />
+                ) : null}
                 {tag}
               </button>
             );
@@ -211,10 +230,10 @@ export default function Dashboard() {
       {selected.length > 0 ? (
         <div className="flex items-center gap-2 rounded-lg border border-line bg-surface px-3 py-1.5 text-xs dark:bg-transparent">
           <span className="shrink-0 font-medium">已选 {selected.length} 项</span>
-          <Button size="sm" onClick={() => bulk.mutate("pause")} disabled={bulk.isPending}>
+          <Button size="sm" onClick={() => bulk.mutate('pause')} disabled={bulk.isPending}>
             <Pause size={13} /> 暂停
           </Button>
-          <Button size="sm" onClick={() => bulk.mutate("resume")} disabled={bulk.isPending}>
+          <Button size="sm" onClick={() => bulk.mutate('resume')} disabled={bulk.isPending}>
             <Play size={13} /> 恢复
           </Button>
           <Button
@@ -223,7 +242,7 @@ export default function Dashboard() {
             variant="danger"
             disabled={bulk.isPending}
             onClick={() => {
-              if (window.confirm(`删除选中的 ${selected.length} 项检查项？`)) bulk.mutate("remove");
+              if (window.confirm(`删除选中的 ${selected.length} 项检查项？`)) bulk.mutate('remove');
             }}
           >
             <Trash2 size={13} />
@@ -236,7 +255,7 @@ export default function Dashboard() {
 
       {visible.length === 0 ? (
         <EmptyState>
-          {all.length === 0 ? "还没有检查项，点右上角新建一个。" : "没有匹配的检查项。"}
+          {all.length === 0 ? '还没有检查项，点右上角新建一个。' : '没有匹配的检查项。'}
         </EmptyState>
       ) : (
         <div className="overflow-hidden rounded-lg border border-line bg-surface dark:bg-transparent">
@@ -307,7 +326,7 @@ export default function Dashboard() {
                       checked={selected.includes(c.uuid)}
                       onChange={(e) =>
                         setSelected((prev) =>
-                          e.target.checked ? [...prev, c.uuid] : prev.filter((u) => u !== c.uuid),
+                          e.target.checked ? [...prev, c.uuid] : prev.filter((u) => u !== c.uuid)
                         )
                       }
                       className="size-3.5 shrink-0"
@@ -321,7 +340,10 @@ export default function Dashboard() {
                         .split(/\s+/)
                         .filter(Boolean)
                         .map((t) => (
-                          <span key={t} className="rounded bg-canvas px-1.5 py-0.5 text-[11px] text-ink-soft">
+                          <span
+                            key={t}
+                            className="rounded bg-canvas px-1.5 py-0.5 text-[11px] text-ink-soft"
+                          >
                             {t}
                           </span>
                         ))}
@@ -331,23 +353,42 @@ export default function Dashboard() {
                     {c.slug ? `/ping/${c.slug}` : `/ping/${c.uuid}`}
                   </div>
                 </div>
-                <span className="hidden w-24 shrink-0 truncate text-xs text-ink-soft sm:block" title={plan(c)}>
+                <span
+                  className="hidden w-24 shrink-0 truncate text-xs text-ink-soft sm:block"
+                  title={plan(c)}
+                >
                   {plan(c)}
                 </span>
-                <span className="hidden w-24 shrink-0 truncate text-xs sm:block" title={c.next_ping ?? ""}>
+                <span
+                  className="hidden w-24 shrink-0 truncate text-xs sm:block"
+                  title={c.next_ping ?? ''}
+                >
                   {due}
                 </span>
-                <span className="hidden w-20 shrink-0 truncate text-xs text-ink-soft sm:block" title={fromNow(d?.last_ping ?? c.last_ping)}>
+                <span
+                  className="hidden w-20 shrink-0 truncate text-xs text-ink-soft sm:block"
+                  title={fromNow(d?.last_ping ?? c.last_ping)}
+                >
                   {fromNow(d?.last_ping ?? c.last_ping)}
                 </span>
                 <div className="ml-auto flex shrink-0 items-center justify-end gap-1">
                   <CopyButton value={c.ping_url} />
-                  {status === "paused" ? (
-                    <Button size="sm" variant="ghost" title="恢复监控" onClick={() => resume.mutate(c)}>
+                  {status === 'paused' ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      title="恢复监控"
+                      onClick={() => resume.mutate(c)}
+                    >
                       <Play size={14} />
                     </Button>
                   ) : (
-                    <Button size="sm" variant="ghost" title="暂停监控" onClick={() => pause.mutate(c)}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      title="暂停监控"
+                      onClick={() => pause.mutate(c)}
+                    >
                       <Pause size={14} />
                     </Button>
                   )}
@@ -378,14 +419,14 @@ export default function Dashboard() {
 
 function dotClass(status: Display): string {
   const map: Record<string, string> = {
-    up: "bg-up",
-    grace: "bg-late",
-    down: "bg-down",
-    new: "bg-idle",
-    paused: "bg-idle",
-    started: "bg-idle",
+    up: 'bg-up',
+    grace: 'bg-late',
+    down: 'bg-down',
+    new: 'bg-idle',
+    paused: 'bg-idle',
+    started: 'bg-idle'
   };
-  return map[status] ?? "bg-idle";
+  return map[status] ?? 'bg-idle';
 }
 
 // SortHeader 只画文字与箭头，显示方式（含窄屏隐藏）由调用方的 className 决定。
@@ -395,7 +436,7 @@ function SortHeader({
   sortKey,
   current,
   onChange,
-  className,
+  className
 }: {
   label: string;
   hint: string;
@@ -411,10 +452,18 @@ function SortHeader({
       title={hint}
       aria-label={hint}
       onClick={() => onChange(sortKey)}
-      className={cx("hover:text-ink", on && "text-ink", className)}
+      className={cx('hover:text-ink', on && 'text-ink', className)}
     >
       {label ? <span>{label}</span> : null}
-      {on ? current.desc ? <ArrowDown size={11} /> : <ArrowUp size={11} /> : <ArrowDown size={11} className="opacity-30" />}
+      {on ? (
+        current.desc ? (
+          <ArrowDown size={11} />
+        ) : (
+          <ArrowUp size={11} />
+        )
+      ) : (
+        <ArrowDown size={11} className="opacity-30" />
+      )}
     </button>
   );
 }

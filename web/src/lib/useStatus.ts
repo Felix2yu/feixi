@@ -1,7 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
-import { fetchStatus } from "./api";
-import type { StatusFeed } from "./types";
+import { useQuery } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from 'react';
+import { fetchStatus } from './api';
+import type { StatusFeed } from './types';
 
 // The dashboard polls hard enough to feel live while the user is looking at it,
 // and backs off to a minute once it is idle or hidden — the behaviour the
@@ -20,20 +20,20 @@ export function useStatusFeed() {
   useEffect(() => {
     const onMove = () => setActive(true);
     const onVisibility = () => setVisible(!document.hidden);
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("keydown", onMove);
-    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('keydown', onMove);
+    document.addEventListener('visibilitychange', onVisibility);
     const idle = setInterval(() => setActive(false), 60_000);
     return () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("keydown", onMove);
-      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('keydown', onMove);
+      document.removeEventListener('visibilitychange', onVisibility);
       clearInterval(idle);
     };
   }, []);
 
   const query = useQuery({
-    queryKey: ["status"],
+    queryKey: ['status'],
     queryFn: async () => {
       const result = await fetchStatus(etag.current);
       if (result.feed) {
@@ -47,13 +47,13 @@ export function useStatusFeed() {
     },
     refetchInterval: () => interval(active, visible),
     refetchIntervalInBackground: false,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: true
   });
 
   useEffect(() => {
     if (feed?.title) document.title = feed.title;
     return () => {
-      document.title = "飞檄";
+      document.title = '飞檄';
     };
   }, [feed?.title]);
 

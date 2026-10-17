@@ -1,34 +1,45 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Save } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
-import { Button, Card, Field, Input, Select, Textarea, Toggle, cx, useToast } from "../components/ui";
-import { api } from "../lib/api";
-import { humanDuration } from "../lib/time";
-import type { CheckSpec } from "../lib/types";
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, Save } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import {
+  Button,
+  Card,
+  Field,
+  Input,
+  Select,
+  Textarea,
+  Toggle,
+  cx,
+  useToast
+} from '../components/ui';
+import { api } from '../lib/api';
+import { humanDuration } from '../lib/time';
+import type { CheckSpec } from '../lib/types';
 
 const TIMEOUT_PRESETS: Array<{ label: string; seconds: number }> = [
-  { label: "每小时", seconds: 3600 },
-  { label: "每 6 小时", seconds: 6 * 3600 },
-  { label: "每天", seconds: 24 * 3600 },
-  { label: "每 3 天", seconds: 3 * 24 * 3600 },
-  { label: "每周", seconds: 7 * 24 * 3600 },
+  { label: '每小时', seconds: 3600 },
+  { label: '每 6 小时', seconds: 6 * 3600 },
+  { label: '每天', seconds: 24 * 3600 },
+  { label: '每 3 天', seconds: 3 * 24 * 3600 },
+  { label: '每周', seconds: 7 * 24 * 3600 }
 ];
 
 const GRACE_PRESETS = [60, 300, 600, 1800, 3600];
 
 const CRON_FIELDS: Array<{ key: number; label: string; placeholder: string }> = [
-  { key: 0, label: "分钟", placeholder: "*" },
-  { key: 1, label: "小时", placeholder: "*" },
-  { key: 2, label: "日", placeholder: "*" },
-  { key: 3, label: "月", placeholder: "*" },
-  { key: 4, label: "星期", placeholder: "*" },
+  { key: 0, label: '分钟', placeholder: '*' },
+  { key: 1, label: '小时', placeholder: '*' },
+  { key: 2, label: '日', placeholder: '*' },
+  { key: 3, label: '月', placeholder: '*' },
+  { key: 4, label: '星期', placeholder: '*' }
 ];
 
 function localTimeZones(): string[] {
-  const supported = (Intl as unknown as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf;
-  const list = supported ? supported("timeZone") : [];
-  return list.length ? list : ["UTC", "Asia/Shanghai"];
+  const supported = (Intl as unknown as { supportedValuesOf?: (k: string) => string[] })
+    .supportedValuesOf;
+  const list = supported ? supported('timeZone') : [];
+  return list.length ? list : ['UTC', 'Asia/Shanghai'];
 }
 
 export default function CheckForm() {
@@ -39,33 +50,33 @@ export default function CheckForm() {
   const editing = !!uuid;
 
   const existing = useQuery({
-    queryKey: ["check", uuid],
+    queryKey: ['check', uuid],
     queryFn: () => api.check(uuid!),
-    enabled: editing,
+    enabled: editing
   });
-  const channels = useQuery({ queryKey: ["channels"], queryFn: api.channels });
-  const meta = useQuery({ queryKey: ["meta"], queryFn: api.meta });
+  const channels = useQuery({ queryKey: ['channels'], queryFn: api.channels });
+  const meta = useQuery({ queryKey: ['meta'], queryFn: api.meta });
 
   const [form, setForm] = useState({
-    name: "",
-    tags: "",
-    desc: "",
-    kind: "simple" as "simple" | "cron",
+    name: '',
+    tags: '',
+    desc: '',
+    kind: 'simple' as 'simple' | 'cron',
     timeout: 24 * 3600,
     grace: 3600,
-    schedule: "0 2 * * *",
-    tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-    methods: "" as "" | "POST",
+    schedule: '0 2 * * *',
+    tz: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+    methods: '' as '' | 'POST',
     manual_resume: false,
     filter_http_body: false,
     filter_default_fail: false,
-    start_kw: "",
-    success_kw: "",
-    failure_kw: "",
+    start_kw: '',
+    success_kw: '',
+    failure_kw: '',
     failure_tolerance: 0,
-    channelCodes: [] as string[],
+    channelCodes: [] as string[]
   });
-  const [mode, setMode] = useState<"text" | "grid">("text");
+  const [mode, setMode] = useState<'text' | 'grid'>('text');
   const [preview, setPreview] = useState<string[]>([]);
 
   // Fill the form from the server once, not on every render.
@@ -76,12 +87,12 @@ export default function CheckForm() {
       name: c.name,
       tags: c.tags,
       desc: c.desc,
-      kind: c.schedule ? "cron" : "simple",
+      kind: c.schedule ? 'cron' : 'simple',
       timeout: c.timeout ?? 24 * 3600,
       grace: c.grace,
-      schedule: c.schedule ?? "0 2 * * *",
-      tz: c.tz ?? (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"),
-      methods: c.methods === "POST" ? "POST" : "",
+      schedule: c.schedule ?? '0 2 * * *',
+      tz: c.tz ?? (Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'),
+      methods: c.methods === 'POST' ? 'POST' : '',
       manual_resume: c.manual_resume,
       filter_http_body: c.filter_http_body,
       filter_default_fail: c.filter_default_fail,
@@ -89,12 +100,15 @@ export default function CheckForm() {
       success_kw: c.success_kw,
       failure_kw: c.failure_kw,
       failure_tolerance: c.failure_tolerance ?? 0,
-      channelCodes: channels.data?.channels.map((ch) => ch.code).filter((code) => (c.channels || "").split(",").includes(code)) ?? [],
+      channelCodes:
+        channels.data?.channels
+          .map((ch) => ch.code)
+          .filter((code) => (c.channels || '').split(',').includes(code)) ?? []
     });
   }, [existing.data, channels.data]);
 
   useEffect(() => {
-    if (form.kind !== "cron") return;
+    if (form.kind !== 'cron') return;
     const timer = setTimeout(() => {
       api
         .previewSchedule(form.schedule, form.tz)
@@ -119,9 +133,9 @@ export default function CheckForm() {
         success_kw: form.success_kw,
         failure_kw: form.failure_kw,
         failure_tolerance: form.failure_tolerance,
-        channels: form.channelCodes.join(","),
+        channels: form.channelCodes.join(',')
       };
-      if (form.kind === "simple") {
+      if (form.kind === 'simple') {
         spec.timeout = form.timeout;
       } else {
         spec.schedule = form.schedule;
@@ -129,16 +143,16 @@ export default function CheckForm() {
       }
       if (editing) return api.updateCheck(uuid!, spec);
       // A brand new check gets every existing channel by default.
-      if (form.channelCodes.length === 0) spec.channels = "*";
+      if (form.channelCodes.length === 0) spec.channels = '*';
       return api.createCheck(spec);
     },
     onSuccess: (c) => {
-      client.invalidateQueries({ queryKey: ["checks"] });
-      client.invalidateQueries({ queryKey: ["status"] });
-      toast(editing ? "已保存" : "检查项已创建");
-      navigate(c ? `/checks/${c.uuid}` : "/");
+      client.invalidateQueries({ queryKey: ['checks'] });
+      client.invalidateQueries({ queryKey: ['status'] });
+      toast(editing ? '已保存' : '检查项已创建');
+      navigate(c ? `/checks/${c.uuid}` : '/');
     },
-    onError: (e: Error) => toast(e.message, "error"),
+    onError: (e: Error) => toast(e.message, 'error')
   });
 
   const scheduleFields = form.schedule.trim().split(/\s+/);
@@ -146,47 +160,61 @@ export default function CheckForm() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <Link to={editing ? `/checks/${uuid}` : "/"}>
+        <Link to={editing ? `/checks/${uuid}` : '/'}>
           <Button variant="ghost" size="sm">
             <ArrowLeft size={14} /> 返回
           </Button>
         </Link>
-        <h1 className="text-base font-semibold">{editing ? "编辑检查项" : "新建检查项"}</h1>
+        <h1 className="text-base font-semibold">{editing ? '编辑检查项' : '新建检查项'}</h1>
       </div>
 
       <Card className="space-y-3">
         <h2 className="text-sm font-semibold">基本信息</h2>
         <div className="grid gap-3 md:grid-cols-2">
           <Field label="名称">
-            <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="夜间备份" />
+            <Input
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              placeholder="夜间备份"
+            />
           </Field>
           <Field label="标签" hint="空格分隔，用于筛选和徽章">
-            <Input value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} placeholder="prod www" />
+            <Input
+              value={form.tags}
+              onChange={(e) => setForm({ ...form, tags: e.target.value })}
+              placeholder="prod www"
+            />
           </Field>
         </div>
         <Field label="描述">
-          <Textarea rows={2} value={form.desc} onChange={(e) => setForm({ ...form, desc: e.target.value })} />
+          <Textarea
+            rows={2}
+            value={form.desc}
+            onChange={(e) => setForm({ ...form, desc: e.target.value })}
+          />
         </Field>
       </Card>
 
       <Card className="space-y-3">
         <h2 className="text-sm font-semibold">周期</h2>
         <div className="flex gap-2">
-          {(["simple", "cron"] as const).map((k) => (
+          {(['simple', 'cron'] as const).map((k) => (
             <button
               key={k}
               onClick={() => setForm({ ...form, kind: k })}
               className={cx(
-                "rounded-md border px-3 py-1 text-sm",
-                form.kind === k ? "border-ink bg-accent text-accent-ink" : "border-line text-ink-soft",
+                'rounded-md border px-3 py-1 text-sm',
+                form.kind === k
+                  ? 'border-ink bg-accent text-accent-ink'
+                  : 'border-line text-ink-soft'
               )}
             >
-              {k === "simple" ? "固定间隔" : "Cron 表达式"}
+              {k === 'simple' ? '固定间隔' : 'Cron 表达式'}
             </button>
           ))}
         </div>
 
-        {form.kind === "simple" ? (
+        {form.kind === 'simple' ? (
           <div className="space-y-3">
             <Field label="期望间隔（超时时间）">
               <div className="flex flex-wrap items-center gap-2">
@@ -195,8 +223,10 @@ export default function CheckForm() {
                     key={p.seconds}
                     onClick={() => setForm({ ...form, timeout: p.seconds })}
                     className={cx(
-                      "rounded-md border px-2 py-1 text-xs",
-                      form.timeout === p.seconds ? "border-ink bg-accent text-accent-ink" : "border-line text-ink-soft",
+                      'rounded-md border px-2 py-1 text-xs',
+                      form.timeout === p.seconds
+                        ? 'border-ink bg-accent text-accent-ink'
+                        : 'border-line text-ink-soft'
                     )}
                   >
                     {p.label}
@@ -217,13 +247,13 @@ export default function CheckForm() {
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-ink-soft">Cron 表达式</span>
               <button
-                onClick={() => setMode(mode === "text" ? "grid" : "text")}
+                onClick={() => setMode(mode === 'text' ? 'grid' : 'text')}
                 className="text-xs text-ink-soft underline"
               >
-                {mode === "text" ? "改用五段填写" : "改用文本输入"}
+                {mode === 'text' ? '改用五段填写' : '改用文本输入'}
               </button>
             </div>
-            {mode === "text" ? (
+            {mode === 'text' ? (
               <Input
                 value={form.schedule}
                 onChange={(e) => setForm({ ...form, schedule: e.target.value })}
@@ -235,11 +265,11 @@ export default function CheckForm() {
                 {CRON_FIELDS.map((f) => (
                   <Field key={f.key} label={f.label}>
                     <Input
-                      value={scheduleFields[f.key] ?? "*"}
+                      value={scheduleFields[f.key] ?? '*'}
                       onChange={(e) => {
-                        const next = [...Array(5)].map((_, i) => scheduleFields[i] ?? "*");
-                        next[f.key] = e.target.value || "*";
-                        setForm({ ...form, schedule: next.join(" ") });
+                        const next = [...Array(5)].map((_, i) => scheduleFields[i] ?? '*');
+                        next[f.key] = e.target.value || '*';
+                        setForm({ ...form, schedule: next.join(' ') });
                       }}
                       className="font-mono"
                       placeholder={f.placeholder}
@@ -261,7 +291,11 @@ export default function CheckForm() {
             </div>
             <div className="rounded-md border border-line bg-canvas px-3 py-2 text-xs">
               <div className="mb-1 font-medium text-ink-soft">接下来会运行在</div>
-              {preview.length === 0 ? <div className="text-ink-soft">…</div> : preview.map((p) => <div key={p}>{p}</div>)}
+              {preview.length === 0 ? (
+                <div className="text-ink-soft">…</div>
+              ) : (
+                preview.map((p) => <div key={p}>{p}</div>)
+              )}
             </div>
           </div>
         )}
@@ -273,8 +307,10 @@ export default function CheckForm() {
                 key={g}
                 onClick={() => setForm({ ...form, grace: g })}
                 className={cx(
-                  "rounded-md border px-2 py-1 text-xs",
-                  form.grace === g ? "border-ink bg-accent text-accent-ink" : "border-line text-ink-soft",
+                  'rounded-md border px-2 py-1 text-xs',
+                  form.grace === g
+                    ? 'border-ink bg-accent text-accent-ink'
+                    : 'border-line text-ink-soft'
                 )}
               >
                 {g < 3600 ? `${g / 60} 分钟` : `${g / 3600} 小时`}
@@ -296,7 +332,11 @@ export default function CheckForm() {
         {channels.isLoading ? <div className="text-xs text-ink-soft">加载中…</div> : null}
         {channels.data && channels.data.channels.length === 0 ? (
           <div className="text-xs text-ink-soft">
-            还没有渠道，先去 <Link className="underline" to="/channels">通知渠道</Link> 建一个。
+            还没有渠道，先去{' '}
+            <Link className="underline" to="/channels">
+              通知渠道
+            </Link>{' '}
+            建一个。
           </div>
         ) : null}
         <div className="flex flex-wrap gap-2">
@@ -308,15 +348,17 @@ export default function CheckForm() {
                 onClick={() =>
                   setForm({
                     ...form,
-                    channelCodes: on ? form.channelCodes.filter((c) => c !== ch.code) : [...form.channelCodes, ch.code],
+                    channelCodes: on
+                      ? form.channelCodes.filter((c) => c !== ch.code)
+                      : [...form.channelCodes, ch.code]
                   })
                 }
                 className={cx(
-                  "rounded-md border px-2.5 py-1 text-xs",
-                  on ? "border-up bg-up/10 text-ink" : "border-line text-ink-soft",
+                  'rounded-md border px-2.5 py-1 text-xs',
+                  on ? 'border-up bg-up/10 text-ink' : 'border-line text-ink-soft'
                 )}
               >
-                {on ? "✓ " : ""}
+                {on ? '✓ ' : ''}
                 {ch.name}
               </button>
             );
@@ -327,51 +369,64 @@ export default function CheckForm() {
       <Card className="space-y-3">
         <h2 className="text-sm font-semibold">高级</h2>
         <div className="flex flex-col items-start gap-3">
-        <Toggle
-          checked={form.methods === "POST"}
-          onChange={(v) => setForm({ ...form, methods: v ? "POST" : "" })}
-          label="只接受 POST 请求（GET 会被记为忽略）"
-        />
-        <Toggle
-          checked={form.manual_resume}
-          onChange={(v) => setForm({ ...form, manual_resume: v })}
-          label="粘性暂停：暂停期间忽略 ping，需手动恢复"
-        />
-        <Toggle
-          checked={form.filter_http_body}
-          onChange={(v) => setForm({ ...form, filter_http_body: v })}
-          label="按请求体关键字判定状态"
-        />
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium text-ink-soft">失败容忍次数</span>
-          <Input
-            type="number"
-            min={0}
-            max={100}
-            className="w-24!"
-            value={form.failure_tolerance}
-            onChange={(e) => setForm({ ...form, failure_tolerance: Math.max(0, Number(e.target.value) || 0) })}
+          <Toggle
+            checked={form.methods === 'POST'}
+            onChange={(v) => setForm({ ...form, methods: v ? 'POST' : '' })}
+            label="只接受 POST 请求（GET 会被记为忽略）"
           />
-          <span className="text-xs text-ink-soft">
-            连续收到这么多个失败信号仍不告警，再失败一次才判宕（0 = 第一次失败即宕机；超时未到信号不受此限）
-          </span>
-        </div>
-        <p className="text-xs text-ink-soft">
-          抖动合并：{meta.data && meta.data.flap_threshold > 0
-            ? `最近 ${humanDuration(meta.data.flap_window_seconds * 1000)}内翻转 ≥ ${meta.data.flap_threshold} 次时自动暂停逐条告警，稳定一个窗口后恢复（FEIXI_FLAP_WINDOW / FEIXI_FLAP_THRESHOLD）`
-            : "已通过 FEIXI_FLAP_THRESHOLD=0 关闭"}
-        </p>
+          <Toggle
+            checked={form.manual_resume}
+            onChange={(v) => setForm({ ...form, manual_resume: v })}
+            label="粘性暂停：暂停期间忽略 ping，需手动恢复"
+          />
+          <Toggle
+            checked={form.filter_http_body}
+            onChange={(v) => setForm({ ...form, filter_http_body: v })}
+            label="按请求体关键字判定状态"
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-ink-soft">失败容忍次数</span>
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              className="w-24!"
+              value={form.failure_tolerance}
+              onChange={(e) =>
+                setForm({ ...form, failure_tolerance: Math.max(0, Number(e.target.value) || 0) })
+              }
+            />
+            <span className="text-xs text-ink-soft">
+              连续收到这么多个失败信号仍不告警，再失败一次才判宕（0 =
+              第一次失败即宕机；超时未到信号不受此限）
+            </span>
+          </div>
+          <p className="text-xs text-ink-soft">
+            抖动合并：
+            {meta.data && meta.data.flap_threshold > 0
+              ? `最近 ${humanDuration(meta.data.flap_window_seconds * 1000)}内翻转 ≥ ${meta.data.flap_threshold} 次时自动暂停逐条告警，稳定一个窗口后恢复（FEIXI_FLAP_WINDOW / FEIXI_FLAP_THRESHOLD）`
+              : '已通过 FEIXI_FLAP_THRESHOLD=0 关闭'}
+          </p>
         </div>
         {form.filter_http_body ? (
           <div className="grid gap-3 md:grid-cols-3">
             <Field label="失败关键字">
-              <Input value={form.failure_kw} onChange={(e) => setForm({ ...form, failure_kw: e.target.value })} />
+              <Input
+                value={form.failure_kw}
+                onChange={(e) => setForm({ ...form, failure_kw: e.target.value })}
+              />
             </Field>
             <Field label="成功关键字">
-              <Input value={form.success_kw} onChange={(e) => setForm({ ...form, success_kw: e.target.value })} />
+              <Input
+                value={form.success_kw}
+                onChange={(e) => setForm({ ...form, success_kw: e.target.value })}
+              />
             </Field>
             <Field label="开始关键字">
-              <Input value={form.start_kw} onChange={(e) => setForm({ ...form, start_kw: e.target.value })} />
+              <Input
+                value={form.start_kw}
+                onChange={(e) => setForm({ ...form, start_kw: e.target.value })}
+              />
             </Field>
             <div className="md:col-span-3">
               <Toggle
@@ -386,9 +441,11 @@ export default function CheckForm() {
 
       <div className="flex items-center gap-2">
         <Button variant="primary" onClick={() => save.mutate()} disabled={save.isPending}>
-          <Save size={14} /> {save.isPending ? "保存中…" : editing ? "保存" : "创建"}
+          <Save size={14} /> {save.isPending ? '保存中…' : editing ? '保存' : '创建'}
         </Button>
-        {save.error ? <span className="text-xs text-down">{(save.error as Error).message}</span> : null}
+        {save.error ? (
+          <span className="text-xs text-down">{(save.error as Error).message}</span>
+        ) : null}
       </div>
     </div>
   );

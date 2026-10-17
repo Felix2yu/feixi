@@ -2,7 +2,7 @@
 // continuous spans whose width is the time spent in that state — not one cell per
 // pixel, which reads as "there were 120 pings".
 
-export type TimelineState = "up" | "down" | "late" | null;
+export type TimelineState = 'up' | 'down' | 'late' | null;
 
 export interface TimelineRun {
   state: TimelineState;
@@ -16,10 +16,10 @@ export interface FlipEvent {
 }
 
 const palette: Record<string, string> = {
-  up: "#4caf50",
-  late: "#fe7d37",
-  down: "#e05d44",
-  none: "#e4e7eb",
+  up: '#4caf50',
+  late: '#fe7d37',
+  down: '#e05d44',
+  none: '#e4e7eb'
 };
 
 export function timelineColor(state: TimelineState): string {
@@ -33,7 +33,7 @@ export function buildRuns(
   flips: FlipEvent[],
   status: string,
   now: number,
-  windowMs: number,
+  windowMs: number
 ): TimelineRun[] {
   const start = now - windowMs;
   const events = flips
@@ -43,7 +43,7 @@ export function buildRuns(
 
   if (events.length === 0) {
     const state: TimelineState =
-      status === "down" ? "down" : status === "grace" ? "late" : status === "up" ? "up" : null;
+      status === 'down' ? 'down' : status === 'grace' ? 'late' : status === 'up' ? 'up' : null;
     return [{ state, from: start, to: now }];
   }
 
@@ -54,7 +54,7 @@ export function buildRuns(
   for (let i = 0; i < events.length; i++) {
     const from = Math.max(events[i].at, start);
     const to = i + 1 < events.length ? events[i + 1].at : now;
-    if (to > from) runs.push({ state: events[i].up ? "up" : "down", from, to });
+    if (to > from) runs.push({ state: events[i].up ? 'up' : 'down', from, to });
   }
   return runs;
 }
