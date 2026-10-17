@@ -172,7 +172,10 @@ func TestRandomKey(t *testing.T) {
 			t.Errorf("unexpected rune %q in %q", r, key)
 		}
 	}
-	if randomKey(7) == randomKey(7) {
+	// 两次独立绘制必须不同（直接写 randomKey(7) == randomKey(7) 会让静态检查
+	// 误判成「同一表达式自比较」的笔误）
+	first, second := randomKey(7), randomKey(7)
+	if first == second {
 		t.Error("two draws collided")
 	}
 	if got := len(randomKey(0)); got != 0 {

@@ -6,8 +6,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/yufei/feixi/internal/engine"
 	"net/url"
+
+	"github.com/yufei/feixi/internal/engine"
 )
 
 // checkPayload is the $JSON document: the check fields a receiver is most
@@ -111,16 +112,4 @@ func (w *Worker) buildVars(ctx context.Context, c *engine.Check, f *engine.Flip,
 // target; the receiver sees the original text back after URL parsing.
 func safen(s string) string {
 	return url.QueryEscape(s)
-}
-
-func itoa64(v int64) string {
-	if v == 0 {
-		return "0"
-	}
-	var digits []byte
-	for v > 0 {
-		digits = append([]byte{byte('0' + v%10)}, digits...)
-		v /= 10
-	}
-	return string(digits)
 }

@@ -176,7 +176,8 @@ func TestProcessDeliversOnce(t *testing.T) {
 		atomic.AddInt32(&hits, 1)
 		body, _ := io.ReadAll(r.Body)
 		doc := map[string]any{}
-		json.Unmarshal(body, &doc)
+		// mock 解析失败会让后续断言拿不到字段，届时自然暴露
+		_ = json.Unmarshal(body, &doc)
 		last = doc
 		lastQuery = r.URL.RawQuery
 		io.WriteString(rw, `{"ok":true}`)

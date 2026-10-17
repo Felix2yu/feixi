@@ -260,15 +260,22 @@ func (w *Worker) recordedSend(ctx context.Context, ch *store.Channel, c *engine.
 			if ferr := w.DB.FinishNotification(ctx, notif.ID, ""); ferr != nil {
 				return ferr
 			}
-			w.DB.RecordAttempt(ctx, ch.ID, time.Now().UTC(), elapsed, "", false)
+			// 审计记录写失败不影响「通知已经送达」这个事实，只留日志
+			if aerr := w.DB.RecordAttempt(ctx, ch.ID, time.Now().UTC(), elapsed, "", false); aerr != nil {
+				w.Log.Warn("记录通知尝试失败", "channel", ch.Name, "err", aerr)
+			}
 			return nil
 		}
 
 		lastErr = err
 		text := errText(err)
 		permanent := isPermanent(err) || isClientError(err)
-		w.DB.FinishNotification(ctx, notif.ID, text)
-		w.DB.RecordAttempt(ctx, ch.ID, time.Now().UTC(), elapsed, text, permanent)
+		if ferr := w.DB.FinishNotification(ctx, notif.ID, text); ferr != nil {
+			w.Log.Warn("更新通知结果失败", "channel", ch.Name, "err", ferr)
+		}
+		if aerr := w.DB.RecordAttempt(ctx, ch.ID, time.Now().UTC(), elapsed, text, permanent); aerr != nil {
+			w.Log.Warn("记录通知尝试失败", "channel", ch.Name, "err", aerr)
+		}
 		if permanent {
 			w.Log.Warn("渠道被禁用", "channel", ch.Name, "err", text)
 			return err

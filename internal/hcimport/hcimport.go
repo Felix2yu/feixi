@@ -122,10 +122,7 @@ func firstNonEmpty(a, b string) string {
 }
 
 func trimJSONError(err error) string {
-	msg := err.Error()
-	if strings.HasPrefix(msg, "json: ") {
-		msg = msg[6:]
-	}
+	msg := strings.TrimPrefix(err.Error(), "json: ")
 	if len(msg) > 120 {
 		msg = msg[:120]
 	}

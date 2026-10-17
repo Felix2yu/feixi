@@ -436,9 +436,7 @@ func (h *apiHandler) listChecks(w http.ResponseWriter, r *http.Request, v int) {
 
 	filter := store.CheckFilter{}
 	query := r.URL.Query()
-	for _, tag := range query["tag"] {
-		filter.Tags = append(filter.Tags, tag)
-	}
+	filter.Tags = append(filter.Tags, query["tag"]...)
 	if slug := query.Get("slug"); slug != "" {
 		filter.Slugs = append(filter.Slugs, slug)
 	}
@@ -754,7 +752,8 @@ func (h *apiHandler) updateCheck(w http.ResponseWriter, r *http.Request, v int) 
 		// The spec was already written; restore it, matching the original's
 		// "bad channel means no change" behaviour.
 		*c = before
-		h.db.UpdateCheck(r.Context(), c)
+		// 回滚写失败也没有别的出口：内存里的 c 已是原值，响应仍要回 400
+		_ = h.db.UpdateCheck(r.Context(), c)
 		jsonError(w, http.StatusBadRequest, err.Error())
 		return
 	}

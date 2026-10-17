@@ -42,7 +42,7 @@ func parseImportArgs(args []string) (path string, dryRun bool, err error) {
 		}
 	}
 	if path == "" {
-		return "", false, fmt.Errorf(importUsage)
+		return "", false, errors.New(importUsage)
 	}
 	return path, dryRun, nil
 }

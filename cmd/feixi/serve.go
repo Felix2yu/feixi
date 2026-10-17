@@ -21,12 +21,12 @@ import (
 	"github.com/yufei/feixi/internal/store"
 )
 
-func serve(ctx context.Context, log *slog.Logger) error {
+func serve(ctx context.Context) error {
 	cfg := config.Default()
 	if err := cfg.Validate(); err != nil {
 		return err
 	}
-	log = setupLog(cfg)
+	log := setupLog(cfg)
 
 	// Outbound notification traffic goes through the guarded transport, so it
 	// is installed before any channel can be created.
