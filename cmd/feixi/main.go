@@ -33,7 +33,7 @@ func main() {
 	var err error
 	switch cmd {
 	case "serve":
-		err = serve(ctx, log)
+		err = serve(ctx)
 	case "prune":
 		err = runPrune(ctx, log)
 	case "import":

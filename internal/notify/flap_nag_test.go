@@ -32,7 +32,8 @@ func newReceiver(t *testing.T, status int) *receiver {
 	r.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		body, _ := io.ReadAll(req.Body)
 		doc := map[string]any{}
-		json.Unmarshal(body, &doc)
+		// mock 解析失败会让后续断言拿不到字段，届时自然暴露
+		_ = json.Unmarshal(body, &doc)
 
 		r.mu.Lock()
 		r.hits++
@@ -63,10 +64,10 @@ func (r *receiver) text() (string, string) {
 	return r.title, r.message
 }
 
-func (rec *receiver) channel(t *testing.T, db *store.DB, projectID int64, conf store.ChannelConf) *store.Channel {
+func (r *receiver) channel(t *testing.T, db *store.DB, projectID int64, conf store.ChannelConf) *store.Channel {
 	t.Helper()
 	ch, err := db.CreateChannel(context.Background(), &store.NewChannel{
-		ProjectID: projectID, Name: "hook", URLs: []string{rec.urlValue}, Conf: conf,
+		ProjectID: projectID, Name: "hook", URLs: []string{r.urlValue}, Conf: conf,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -432,9 +433,6 @@ func TestRetryNotification(t *testing.T) {
 		t.Errorf("deleted check = %v", err)
 	}
 	notice := &store.Notification{CheckID: &id, ChannelID: &channelID, CheckStatus: engine.StatusDown,
-		Created: time.Now().UTC()}
-
-	notice = &store.Notification{CheckID: &id, ChannelID: &channelID, CheckStatus: engine.StatusDown,
 		Created: time.Now().UTC()}
 	if err := w.RetryNotification(ctx, notice); err != nil {
 		t.Fatal(err)

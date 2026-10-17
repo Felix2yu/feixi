@@ -135,7 +135,7 @@ func TestServeValidatesTheSiteRoot(t *testing.T) {
 	t.Setenv("FEIXI_SITE_ROOT", "status.example.com")
 	t.Setenv("FEIXI_DB", filepath.Join(t.TempDir(), "serve.db"))
 
-	err := serve(context.Background(), slog.Default())
+	err := serve(context.Background())
 	if err == nil {
 		t.Fatal("an invalid site root should stop startup")
 	}
@@ -148,7 +148,7 @@ func TestServeReportsAClosedDatabasePath(t *testing.T) {
 	t.Setenv("FEIXI_SITE_ROOT", "http://example.test")
 	t.Setenv("FEIXI_DB", filepath.Join(os.DevNull, "feixi.db"))
 
-	if err := serve(context.Background(), slog.Default()); err == nil {
+	if err := serve(context.Background()); err == nil {
 		t.Fatal("expected the database open to fail")
 	}
 }
@@ -164,7 +164,7 @@ func TestServeServesThenShutsDown(t *testing.T) {
 	defer cancel()
 
 	errCh := make(chan error, 1)
-	go func() { errCh <- serve(ctx, slog.Default()) }()
+	go func() { errCh <- serve(ctx) }()
 
 	waitFor(t, func() bool {
 		resp, err := http.Get("http://" + addr + "/api/v1/status/")
@@ -172,13 +172,13 @@ func TestServeServesThenShutsDown(t *testing.T) {
 			return false
 		}
 		defer resp.Body.Close()
-		io.Copy(io.Discard, resp.Body)
+		_, _ = io.Copy(io.Discard, resp.Body)
 		return resp.StatusCode == http.StatusOK
 	}, "the server should answer /api/v1/status/ once it is up")
 
 	// 前端没构建时也只该是 503，而不是 500。
 	if resp, err := http.Get("http://" + addr + "/"); err == nil {
-		io.Copy(io.Discard, resp.Body)
+		_, _ = io.Copy(io.Discard, resp.Body)
 		resp.Body.Close()
 		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusServiceUnavailable {
 			t.Errorf("GET / = %d", resp.StatusCode)
@@ -208,7 +208,7 @@ func TestServeReportsAPortInTheUse(t *testing.T) {
 	t.Setenv("FEIXI_DB", filepath.Join(t.TempDir(), "serve.db"))
 
 	errCh := make(chan error, 1)
-	go func() { errCh <- serve(context.Background(), slog.Default()) }()
+	go func() { errCh <- serve(context.Background()) }()
 
 	select {
 	case err := <-errCh:
