@@ -1,7 +1,7 @@
 // Shapes returned by the feixi backend. These field names are the compatibility
 // surface: agents and scripts send and parse them.
 
-export type Display = "new" | "up" | "grace" | "down" | "paused" | "started";
+export type Display = 'new' | 'up' | 'grace' | 'down' | 'paused' | 'started';
 
 export interface Check {
   name: string;
@@ -42,7 +42,7 @@ export interface Check {
 }
 
 export interface Ping {
-  type: "success" | "start" | "log" | "fail" | "ign";
+  type: 'success' | 'start' | 'log' | 'fail' | 'ign';
   date: string;
   n: number;
   scheme: string;
@@ -60,34 +60,34 @@ export interface FlipEvent {
   up: 0 | 1;
   old_status?: string;
   new_status?: string;
-  reason?: "" | "timeout" | "fail";
+  reason?: '' | 'timeout' | 'fail';
 }
 
 // 检查项事件流的一行：ping、状态翻转、通知投递三者合并。
 export type StreamEvent =
   | {
-      type: "ping";
+      type: 'ping';
       date: string;
       n: number;
-      kind: Ping["type"];
+      kind: Ping['type'];
       rid: string | null;
       duration?: number;
       exit_status?: number;
     }
   | {
-      type: "flip";
+      type: 'flip';
       date: string;
       up: boolean;
       old_status: string;
       new_status: string;
-      reason?: "timeout" | "fail";
+      reason?: 'timeout' | 'fail';
     }
   | {
-      type: "notification";
+      type: 'notification';
       date: string;
       code: string;
       channel: string;
-      status: "up" | "down" | "flap" | "stable";
+      status: 'up' | 'down' | 'flap' | 'stable';
       error: string;
     };
 
@@ -141,7 +141,7 @@ export interface StatusPageCheck {
 
 export interface StatusPageData {
   project: string;
-  summary: "ok" | "grace" | "down";
+  summary: 'ok' | 'grace' | 'down';
   total: number;
   down: number;
   grace: number;

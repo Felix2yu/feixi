@@ -1,24 +1,24 @@
-import dayjs from "dayjs";
-import relativeTime from "dayjs/plugin/relativeTime";
-import "dayjs/locale/zh-cn";
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+import 'dayjs/locale/zh-cn';
 
 dayjs.extend(relativeTime);
-dayjs.locale("zh-cn");
+dayjs.locale('zh-cn');
 
 export function fromNow(value: string | null | undefined): string {
-  if (!value) return "从未";
+  if (!value) return '从未';
   return dayjs(value).from(dayjs());
 }
 
 export function formatDateTime(value: string | null | undefined): string {
-  if (!value) return "—";
-  return dayjs(value).format("YYYY-MM-DD HH:mm:ss");
+  if (!value) return '—';
+  return dayjs(value).format('YYYY-MM-DD HH:mm:ss');
 }
 
 // countdown is the "下次到期" cell. The column header already says what the
 // number means, so the value stays short enough to fit one line at narrow widths.
 export function countdown(value: string | null | undefined, now: number): string {
-  if (!value) return "等待 ping";
+  if (!value) return '等待 ping';
   const target = dayjs(value).valueOf();
   const delta = target - now;
   // Use the caller's clock here too, so the whole cell can't disagree with itself.
@@ -33,10 +33,10 @@ export function humanDuration(ms: number): string {
   if (total < 60) return `${total} 秒`;
 
   const units: Array<[number, string]> = [
-    [604800, "周"],
-    [86400, "天"],
-    [3600, "小时"],
-    [60, "分钟"],
+    [604800, '周'],
+    [86400, '天'],
+    [3600, '小时'],
+    [60, '分钟']
   ];
   const parts: string[] = [];
   let rest = total;
@@ -49,5 +49,5 @@ export function humanDuration(ms: number): string {
     // Two units are enough to read a countdown.
     if (parts.length === 2) break;
   }
-  return parts.join(" ") || "0 秒";
+  return parts.join(' ') || '0 秒';
 }

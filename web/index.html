@@ -18,9 +18,9 @@
     <script>
       // 首屏前就把 .dark 挂上，避免深色偏好下白闪一下；规则与 src/lib/theme.ts 一致。
       try {
-        var stored = localStorage.getItem("feixi-theme");
-        if (stored === "dark" || (!stored && matchMedia("(prefers-color-scheme: dark)").matches)) {
-          document.documentElement.classList.add("dark");
+        var stored = localStorage.getItem('feixi-theme');
+        if (stored === 'dark' || (!stored && matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
         }
       } catch (e) {}
     </script>
