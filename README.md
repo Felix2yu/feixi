@@ -203,3 +203,7 @@ CI 接的是组织统一的 reusable workflow（`Felix2yu/.github`，pin 在 `@v
 - systemd `OnCalendar` 表达式：运行时不解析，只有 `feixi import` 在做无损降段（见「从 healthchecks 迁移」），降不了的列出来让人改
 - 进程内执行命令型的通知渠道（等于把 RCE 交给配置项）
 - Prometheus 指标与外部监控接入：单进程用日志 + `/api/v3/status/` 足够
+
+## 许可证
+
+本项目以 [MIT](LICENSE) 发布，© 2026 Felix2yu。
