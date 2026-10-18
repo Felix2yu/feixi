@@ -166,7 +166,7 @@ feixi import checks.json               # 路径写 - 从标准输入读
 | 监听 | `:8080`（`FEIXI_LISTEN`） |
 | 数据 | `/data/feixi.db`，绑定挂载 `./data` 时用 `PUID`/`PGID` 对齐宿主属主 |
 | 探活 | `GET /api/v3/status/`（真跑一次 `SELECT 1`，免鉴权），Dockerfile 里已带 `HEALTHCHECK` |
-| 运行身份 | 非 root（alpine `feixi` 用户，入口脚本按 PUID/PGID 降权并 chown `/data`） |
+| 运行身份 | 非 root（公共基镜 `ghcr.io/felix2yu/base` 按 PUID/PGID 降权并 chown `/data`） |
 
 pnpm 命令要在 `web` 目录里跑，那里才有 `packageManager` 声明供其切换版本。
 
