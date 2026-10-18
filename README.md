@@ -174,6 +174,14 @@ pnpm 命令要在 `web` 目录里跑，那里才有 `packageManager` 声明供�
 
 SQLite 是 WAL 模式，**需要对数据目录本身可写**；宿主目录属主与容器内 uid 不一致时症状是 `error 14: unable to open database file`，`chmod 777` 只是把问题推到下次恢复备份之后。
 
+备份走 `feixi backup` 子命令：进程内用 `VACUUM INTO` 导出一份一致性快照到 stdout（不跑迁移、不阻塞写入），交给外部备份工具或手动收取：
+
+```bash
+docker exec feixi feixi backup > feixi-$(date +%F).db
+```
+
+恢复即把文件放回数据目录（产物是 delete 日志模式，应用启动会按自身逻辑切回 WAL）。compose 里对应的声明是 `BACKUP_SQLITE_CMD`，见 `docker-compose.yml`。
+
 ## 开发
 
 ```bash

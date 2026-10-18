@@ -63,6 +63,27 @@ func Open(path string) (*DB, error) {
 	return db, nil
 }
 
+// OpenForExport 打开数据库用于导出，与 Open 的区别：不建目录、不跑迁移。
+//
+// backup 子命令会在应用运行时被外部备份工具（docker exec）触发：表结构升级只应由
+// 应用进程自己执行，一个"顺手打开数据库"的导出进程不该把 schema 改了，更不该与
+// 正在运行的应用抢写。数据文件不存在时直接报错——导出进程永远不该新建空库。
+func OpenForExport(path string) (*DB, error) {
+	if _, err := os.Stat(path); err != nil {
+		return nil, fmt.Errorf("数据库文件不可用：%w", err)
+	}
+
+	// 不设 journal_mode：导出连接不该改写库头部；已有的 WAL 数据照常读取。
+	write, err := openConn(path, "_pragma=busy_timeout(5000)")
+	if err != nil {
+		return nil, err
+	}
+	// 导出是顺序读，一条连接足够，也免得多余连接各自去开 -shm 句柄。
+	write.SetMaxOpenConns(1)
+	// 同一个句柄同时挂在 Write/Read 上：Close 对已关句柄是幂等的。
+	return &DB{Write: write, Read: write, Path: path}, nil
+}
+
 func openConn(path, query string) (*sql.DB, error) {
 	dsn := "file:" + filepath.Clean(path) + "?" + query
 	handle, err := sql.Open("sqlite", dsn)

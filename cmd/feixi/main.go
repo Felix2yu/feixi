@@ -38,8 +38,12 @@ func main() {
 		err = runPrune(ctx, log)
 	case "import":
 		err = runImport(ctx, log, args)
+	// backup 在分发处就不碰配置初始化之外的任何东西：不 seed、不建目录、不起
+	// 后台任务和 HTTP 服务，stdout 只承载快照字节（外部备份工具经 docker exec 收取）。
+	case "backup":
+		err = runBackup(os.Stdout)
 	default:
-		err = fmt.Errorf("未知命令 %q（可用：serve、prune、import）", cmd)
+		err = fmt.Errorf("未知命令 %q（可用：serve、prune、import、backup）", cmd)
 	}
 	if err != nil && err != context.Canceled {
 		log.Error("退出", "err", err)
