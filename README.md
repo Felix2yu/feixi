@@ -164,9 +164,10 @@ feixi import checks.json               # 路径写 - 从标准输入读
 | 项 | 值 |
 | --- | --- |
 | 监听 | `:8080`（`FEIXI_LISTEN`） |
-| 数据 | `/data/feixi.db`，绑定挂载 `./data` 时用 `PUID`/`PGID` 对齐宿主属主 |
+| 数据 | `/app/data/feixi.db`，绑定挂载 `./data` 时用 `PUID`/`PGID` 对齐宿主属主 |
+| 二进制 | `/app/feixi`（`/app` 不在 `PATH` 上，`docker exec` 要写绝对路径） |
 | 探活 | `GET /api/v3/status/`（真跑一次 `SELECT 1`，免鉴权），Dockerfile 里已带 `HEALTHCHECK` |
-| 运行身份 | 非 root（公共基镜 `ghcr.io/felix2yu/base` 按 PUID/PGID 降权并 chown `/data`） |
+| 运行身份 | 非 root（公共基镜 `ghcr.io/felix2yu/base` 按 PUID/PGID 降权并 chown `/app/data`） |
 
 pnpm 命令要在 `web` 目录里跑，那里才有 `packageManager` 声明供其切换版本。
 
@@ -174,13 +175,13 @@ pnpm 命令要在 `web` 目录里跑，那里才有 `packageManager` 声明供�
 
 SQLite 是 WAL 模式，**需要对数据目录本身可写**；宿主目录属主与容器内 uid 不一致时症状是 `error 14: unable to open database file`，`chmod 777` 只是把问题推到下次恢复备份之后。
 
-备份走 `feixi backup` 子命令：进程内用 `VACUUM INTO` 导出一份一致性快照到 stdout（不跑迁移、不阻塞写入），交给外部备份工具或手动收取：
+备份走 `feixi backup` 子命令：进程内用 `VACUUM INTO` 导出一份一致性快照到 stdout（不跑迁移、不阻塞写入），交给外部备份工具或手动收取。镜像里的二进制在 `/app/feixi`，而 `/app` 不在 `PATH` 上，所以 `docker exec` 要写绝对路径：
 
 ```bash
-docker exec feixi feixi backup > feixi-$(date +%F).db
+docker exec feixi /app/feixi backup > feixi-$(date +%F).db
 ```
 
-恢复即把文件放回数据目录（产物是 delete 日志模式，应用启动会按自身逻辑切回 WAL）。compose 里对应的声明是 `BACKUP_SQLITE_CMD`，见 `docker-compose.yml`。
+恢复即把文件放回数据目录（容器内 `/app/data`，产物是 delete 日志模式，应用启动会按自身逻辑切回 WAL）。compose 里对应的声明是 `BACKUP_SQLITE_CMD`，见 `docker-compose.yml`。
 
 ## 开发
 

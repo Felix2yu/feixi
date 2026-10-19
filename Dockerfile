@@ -6,14 +6,20 @@
 # 契约见 Felix2yu/.github/docs/docker.md。
 FROM ghcr.io/felix2yu/base:alpine-3.24
 
-ENV FEIXI_DB=/data/feixi.db \
+# 容器内布局（全 fleet 统一）：二进制放 /app/feixi，数据放 /app/data 挂载卷。
+# /app 不在 PATH 上，所以外部备份工具的 BACKUP_SQLITE_CMD 必须写绝对路径
+# `/app/feixi backup`，裸名在 docker exec 里会 command not found。
+# /app/data 由基镜入口按 PUID/PGID chown（同时是 SQLite WAL 需要可写的目录）。
+WORKDIR /app
+
+ENV FEIXI_DB=/app/data/feixi.db \
     FEIXI_LISTEN=:8080 \
-    APP_DATA_DIR=/data
+    APP_DATA_DIR=/app/data
 
-COPY --chmod=755 bin/feixi /usr/local/bin/feixi
+COPY --chmod=755 bin/feixi /app/feixi
 
-RUN mkdir -p /data
-VOLUME ["/data"]
+RUN mkdir -p /app/data
+VOLUME ["/app/data"]
 
 EXPOSE 8080
 
@@ -21,4 +27,4 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD wget -q -O- http://127.0.0.1:8080/api/v3/status/ >/dev/null || exit 1
 
-CMD ["feixi", "serve"]
+CMD ["/app/feixi", "serve"]

@@ -7,18 +7,19 @@ services:
     environment:
       # 反向代理后面务必改成对外地址，否则页面上的 ping_url / 徽章地址是错的
       FEIXI_SITE_ROOT: "http://localhost:8080"
-      FEIXI_DB: /data/feixi.db
+      FEIXI_DB: /app/data/feixi.db
       # 通知默认允许打到内网地址；只想收公网通知就设成 false
       FEIXI_ALLOW_PRIVATE_URLS: "true"
       # 外部备份工具（docker-db-auto-backup）经 docker exec 在容器内跑自导出命令，
       # 从 stdout 收取 SQLite 一致性快照（VACUUM INTO），校验魔数后按 .db 落盘归档。
+      # 二进制在 /app/feixi，而 /app 不在 PATH 上，所以命令必须写绝对路径。
       # docker exec 不经过入口脚本，工具会按下面的 PUID/PGID 自动推导 exec 身份，
       # 无需再配 BACKUP_SQLITE_USER。
-      BACKUP_SQLITE_CMD: "feixi backup"
+      BACKUP_SQLITE_CMD: "/app/feixi backup"
       # 绑定挂载宿主目录时，容器内身份要和目录属主一致（SQLite WAL 要写目录本身）
       PUID: "1000"
       PGID: "1000"
       TZ: Asia/Shanghai
     volumes:
-      - ./data:/data
+      - ./data:/app/data
     restart: unless-stopped
