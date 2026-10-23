@@ -31,6 +31,9 @@ jobs:
       # 摆进 //go:embed 的 internal/web/dist
       go-dir: .
       web-dir: web
+      # lint 纳入 CI：本仓 `pnpm run lint` 已本地实测绿（prettier --check + eslint）。
+      # 只有构建侧被验证过是不够的 —— typescript-eslint 对 TS 7 是加载期硬失败。
+      web-lint-command: pnpm run lint
       frontend-stage-command: mkdir -p internal/web/dist && cp -R web/dist/. internal/web/dist/
       # ./... 是安全的：internal/web/dist 里提交了一个占位 .gitkeep，
       # 没构建前端时 //go:embed all:dist 也能解析通过（静态资源走 public/，构建时拷进 dist）。
