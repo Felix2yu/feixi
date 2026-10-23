@@ -54,6 +54,14 @@ updates:
         patterns: ["*"]
         update-types: ["major"]
 
+    # 与 preset 同步：typescript 的 major 不提 PR。typecheck 的 tsc --noEmit 与 typescript-eslint
+    # 都直接用本仓的 typescript@^6.0.3，major 组会把 ^6 直接改写成 ^7 —— 等于在一条看着能顺手合的
+    # PR 里换掉类型检查器。上 TS7 得按「~6 宿主 + @typescript/native 别名 + --tsgo」那一套显式评估，
+    # 理由与实测见 Felix2yu/.github/docs/dependabot.md 第六节
+    ignore:
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+
   # ── Docker 基础镜像 ─────────────────────────────────────────────────
   - package-ecosystem: "docker"
     directory: "/"
