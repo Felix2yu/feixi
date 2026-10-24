@@ -58,8 +58,20 @@ updates:
     # 都直接用本仓的 typescript@^6.0.3，major 组会把 ^6 直接改写成 ^7 —— 等于在一条看着能顺手合的
     # PR 里换掉类型检查器。上 TS7 得按「~6 宿主 + @typescript/native 别名 + --tsgo」那一套显式评估，
     # 理由与实测见 Felix2yu/.github/docs/dependabot.md 第六节
+    #
+    # eslint 的 major 同样不提 PR：eslint-plugin-react@7 的 peer 只到 eslint ^9.7，
+    # 而 eslint-plugin-react 至今没有支持 ESLint 10 的版本。ESLint 10 移除了
+    # context.getFilename()，而本仓 eslint.config.js 设了 settings.react.version='detect'，
+    # 于是 react/display-name → usedPropTypes → testReactVersion → detectReactVersion
+    # → resolveBasedir(context) 这条链会抛
+    # "contextOrFilename.getFilename is not a function"，lint 阶段整体崩掉且看不出根因。
+    # 实测见 youlv 仓库 2026-10-25 的对照实验（同配置 eslint 9 通过、eslint 10 崩溃）。
     ignore:
       - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@eslint/js"
         update-types: ["version-update:semver-major"]
 
   # ── Docker 基础镜像 ─────────────────────────────────────────────────
