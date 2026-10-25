@@ -1,4 +1,4 @@
-module github.com/yufei/feixi
+module github.com/Felix2yu/feixi
 
 go 1.27.1
 

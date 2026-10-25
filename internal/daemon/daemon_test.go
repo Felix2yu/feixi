@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yufei/feixi/internal/config"
-	"github.com/yufei/feixi/internal/cronex"
-	"github.com/yufei/feixi/internal/engine"
-	"github.com/yufei/feixi/internal/store"
+	"github.com/Felix2yu/feixi/internal/config"
+	"github.com/Felix2yu/feixi/internal/cronex"
+	"github.com/Felix2yu/feixi/internal/engine"
+	"github.com/Felix2yu/feixi/internal/store"
 )
 
 type fakeNotifier struct {

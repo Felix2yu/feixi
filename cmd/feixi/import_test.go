@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yufei/feixi/internal/cronex"
-	"github.com/yufei/feixi/internal/store"
+	"github.com/Felix2yu/feixi/internal/cronex"
+	"github.com/Felix2yu/feixi/internal/store"
 )
 
 const exportFixture = `{"checks":[

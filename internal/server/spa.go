@@ -11,7 +11,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/yufei/feixi/internal/web"
+	"github.com/Felix2yu/feixi/internal/web"
 )
 
 func mountSPA(r chi.Router) {

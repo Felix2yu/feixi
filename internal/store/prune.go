@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/yufei/feixi/internal/engine"
+	"github.com/Felix2yu/feixi/internal/engine"
 )
 
 // PruneCheck keeps the last `limit` pings per check, then trims notifications

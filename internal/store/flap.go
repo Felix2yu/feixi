@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/yufei/feixi/internal/engine"
+	"github.com/Felix2yu/feixi/internal/engine"
 )
 
 // FlapDecision tells the notifier what to do with one alertable flip.

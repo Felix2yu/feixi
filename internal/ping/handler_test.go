@@ -13,9 +13,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
-	"github.com/yufei/feixi/internal/cronex"
-	"github.com/yufei/feixi/internal/engine"
-	"github.com/yufei/feixi/internal/store"
+	"github.com/Felix2yu/feixi/internal/cronex"
+	"github.com/Felix2yu/feixi/internal/engine"
+	"github.com/Felix2yu/feixi/internal/store"
 )
 
 type fixture struct {

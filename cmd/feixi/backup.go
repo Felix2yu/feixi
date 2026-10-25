@@ -3,8 +3,8 @@ package main
 import (
 	"io"
 
-	"github.com/yufei/feixi/internal/config"
-	"github.com/yufei/feixi/internal/store"
+	"github.com/Felix2yu/feixi/internal/config"
+	"github.com/Felix2yu/feixi/internal/store"
 )
 
 // runBackup 实现 `feixi backup`：把一份 SQLite 一致性快照写到 w（由 main 传 os.Stdout），

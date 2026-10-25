@@ -7,8 +7,8 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/yufei/feixi/internal/config"
-	"github.com/yufei/feixi/internal/store"
+	"github.com/Felix2yu/feixi/internal/config"
+	"github.com/Felix2yu/feixi/internal/store"
 )
 
 // Notifier delivers one flip to its channels.

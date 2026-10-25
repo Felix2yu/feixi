@@ -12,13 +12,13 @@ import (
 
 	"github.com/unraid/apprise-go"
 
-	"github.com/yufei/feixi/internal/config"
-	"github.com/yufei/feixi/internal/cronex"
-	"github.com/yufei/feixi/internal/daemon"
-	"github.com/yufei/feixi/internal/notify"
-	"github.com/yufei/feixi/internal/safenet"
-	"github.com/yufei/feixi/internal/server"
-	"github.com/yufei/feixi/internal/store"
+	"github.com/Felix2yu/feixi/internal/config"
+	"github.com/Felix2yu/feixi/internal/cronex"
+	"github.com/Felix2yu/feixi/internal/daemon"
+	"github.com/Felix2yu/feixi/internal/notify"
+	"github.com/Felix2yu/feixi/internal/safenet"
+	"github.com/Felix2yu/feixi/internal/server"
+	"github.com/Felix2yu/feixi/internal/store"
 )
 
 func serve(ctx context.Context) error {

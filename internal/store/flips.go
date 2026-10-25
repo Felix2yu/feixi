@@ -6,8 +6,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/yufei/feixi/internal/engine"
-	"github.com/yufei/feixi/internal/tzutil"
+	"github.com/Felix2yu/feixi/internal/engine"
+	"github.com/Felix2yu/feixi/internal/tzutil"
 )
 
 // ClaimGoingDown takes exactly one check whose deadline has passed and decides,

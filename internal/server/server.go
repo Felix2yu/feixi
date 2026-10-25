@@ -9,10 +9,10 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
 
-	"github.com/yufei/feixi/internal/config"
-	"github.com/yufei/feixi/internal/daemon"
-	"github.com/yufei/feixi/internal/ping"
-	"github.com/yufei/feixi/internal/store"
+	"github.com/Felix2yu/feixi/internal/config"
+	"github.com/Felix2yu/feixi/internal/daemon"
+	"github.com/Felix2yu/feixi/internal/ping"
+	"github.com/Felix2yu/feixi/internal/store"
 )
 
 type Server struct {

@@ -5,9 +5,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/yufei/feixi/internal/engine"
-	"github.com/yufei/feixi/internal/format"
-	"github.com/yufei/feixi/internal/store"
+	"github.com/Felix2yu/feixi/internal/engine"
+	"github.com/Felix2yu/feixi/internal/format"
+	"github.com/Felix2yu/feixi/internal/store"
 )
 
 // pingURL honours the project's preferred URL shape: the slug form reads better

@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/yufei/feixi/internal/engine"
+	"github.com/Felix2yu/feixi/internal/engine"
 )
 
 func record(t *testing.T, db *DB, checkID int64, action engine.Action, in PingInput) (*engine.Check, *engine.Flip) {

@@ -11,7 +11,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/yufei/feixi/internal/engine"
+	"github.com/Felix2yu/feixi/internal/engine"
 )
 
 type ChannelConf struct {

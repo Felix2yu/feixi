@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/yufei/feixi/internal/engine"
+	"github.com/Felix2yu/feixi/internal/engine"
 )
 
 func newCheck(t *testing.T, db *DB, projectID int64, name, slug, tags string) *engine.Check {

@@ -14,10 +14,10 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/yufei/feixi/internal/cronex"
-	"github.com/yufei/feixi/internal/engine"
-	"github.com/yufei/feixi/internal/store"
-	"github.com/yufei/feixi/internal/tzutil"
+	"github.com/Felix2yu/feixi/internal/cronex"
+	"github.com/Felix2yu/feixi/internal/engine"
+	"github.com/Felix2yu/feixi/internal/store"
+	"github.com/Felix2yu/feixi/internal/tzutil"
 )
 
 // 导入直接写库，绕开了 API 层的 validate()，所以同一套界限在这里也得拦一次。

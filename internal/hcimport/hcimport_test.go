@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yufei/feixi/internal/engine"
+	"github.com/Felix2yu/feixi/internal/engine"
 )
 
 // sample 是 GET /api/v3/checks/ 的原文形态：只读字段、null、源实例的渠道 UUID

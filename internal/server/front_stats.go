@@ -10,10 +10,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/yufei/feixi/internal/cronex"
-	"github.com/yufei/feixi/internal/engine"
-	"github.com/yufei/feixi/internal/store"
-	"github.com/yufei/feixi/internal/tzutil"
+	"github.com/Felix2yu/feixi/internal/cronex"
+	"github.com/Felix2yu/feixi/internal/engine"
+	"github.com/Felix2yu/feixi/internal/store"
+	"github.com/Felix2yu/feixi/internal/tzutil"
 )
 
 // mountStats adds the detail-page reads plus the few mutations the dashboard

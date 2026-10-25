@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yufei/feixi/internal/engine"
+	"github.com/Felix2yu/feixi/internal/engine"
 )
 
 func badgeURLs(t *testing.T, ts *testServer, tag string) (two, three string) {

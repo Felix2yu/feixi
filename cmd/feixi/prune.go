@@ -4,9 +4,9 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/yufei/feixi/internal/config"
-	"github.com/yufei/feixi/internal/cronex"
-	"github.com/yufei/feixi/internal/store"
+	"github.com/Felix2yu/feixi/internal/config"
+	"github.com/Felix2yu/feixi/internal/cronex"
+	"github.com/Felix2yu/feixi/internal/store"
 )
 
 // runPrune trims every check's ping history in one pass; the per-ping hint only

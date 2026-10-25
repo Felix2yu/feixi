@@ -8,8 +8,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/yufei/feixi/internal/engine"
-	"github.com/yufei/feixi/internal/format"
+	"github.com/Felix2yu/feixi/internal/engine"
+	"github.com/Felix2yu/feixi/internal/format"
 )
 
 // eventLookback bounds the event stream when a check has few or no pings.

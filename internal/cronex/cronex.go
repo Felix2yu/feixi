@@ -10,7 +10,7 @@ import (
 
 	"github.com/robfig/cron/v3"
 
-	"github.com/yufei/feixi/internal/tzutil"
+	"github.com/Felix2yu/feixi/internal/tzutil"
 )
 
 var parser = cron.NewParser(

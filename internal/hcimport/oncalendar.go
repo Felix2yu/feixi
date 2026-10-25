@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/yufei/feixi/internal/cronex"
-	"github.com/yufei/feixi/internal/tzutil"
+	"github.com/Felix2yu/feixi/internal/cronex"
+	"github.com/Felix2yu/feixi/internal/tzutil"
 )
 
 // systemd 的日历表达式比 5 段 cron 多出四类东西：年份、月末（~）、亚分钟秒位、

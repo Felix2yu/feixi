@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yufei/feixi/internal/cronex"
-	"github.com/yufei/feixi/internal/engine"
+	"github.com/Felix2yu/feixi/internal/cronex"
+	"github.com/Felix2yu/feixi/internal/engine"
 )
 
 func testDB(t *testing.T) *DB {

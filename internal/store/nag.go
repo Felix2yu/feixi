@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/yufei/feixi/internal/engine"
+	"github.com/Felix2yu/feixi/internal/engine"
 )
 
 // NagCandidate pairs one down check with a channel that should receive a

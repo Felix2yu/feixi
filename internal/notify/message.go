@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yufei/feixi/internal/engine"
-	"github.com/yufei/feixi/internal/format"
+	"github.com/Felix2yu/feixi/internal/engine"
+	"github.com/Felix2yu/feixi/internal/format"
 )
 
 // title follows the original apprise channel: "<name or code> UP|DOWN".

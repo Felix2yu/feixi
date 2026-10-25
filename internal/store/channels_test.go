@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yufei/feixi/internal/engine"
+	"github.com/Felix2yu/feixi/internal/engine"
 )
 
 func mkChannel(t *testing.T, db *DB, projectID int64, name string, urls []string, conf ChannelConf) *Channel {

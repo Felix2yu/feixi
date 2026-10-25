@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yufei/feixi/internal/engine"
-	"github.com/yufei/feixi/internal/store"
+	"github.com/Felix2yu/feixi/internal/engine"
+	"github.com/Felix2yu/feixi/internal/store"
 )
 
 // receiver 是一个假的 apprise 目标：记录每次 POST 的正文与查询串。

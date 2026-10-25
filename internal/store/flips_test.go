@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yufei/feixi/internal/engine"
+	"github.com/Felix2yu/feixi/internal/engine"
 )
 
 func TestFlipsRangeFilters(t *testing.T) {

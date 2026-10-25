@@ -11,9 +11,9 @@ import (
 
 	apprise "github.com/unraid/apprise-go"
 
-	"github.com/yufei/feixi/internal/config"
-	"github.com/yufei/feixi/internal/engine"
-	"github.com/yufei/feixi/internal/store"
+	"github.com/Felix2yu/feixi/internal/config"
+	"github.com/Felix2yu/feixi/internal/engine"
+	"github.com/Felix2yu/feixi/internal/store"
 )
 
 type Worker struct {
