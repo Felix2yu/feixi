@@ -31,3 +31,4 @@ internal/web/dist/*
 .continue/
 .windsurf/
 .aider*
+.zcode/
